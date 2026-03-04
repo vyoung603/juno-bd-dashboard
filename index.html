@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Project Juno -- BD Intelligence Dashboard</title>
+<script>
+(function(){
+  var h='5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8';
+  if(sessionStorage.getItem('juno_auth')==='1')return;
+  var p=prompt('Enter password to access the Juno BD Dashboard:');
+  if(!p){document.documentElement.innerHTML='<body style="background:#0f1117;color:#9ea3b5;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh"><p>Access denied.</p></body>';return;}
+  async function c(s){var e=new TextEncoder().encode(s);var b=await crypto.subtle.digest('SHA-256',e);return Array.from(new Uint8Array(b)).map(x=>x.toString(16).padStart(2,'0')).join('')}
+  c(p).then(function(d){if(d===h){sessionStorage.setItem('juno_auth','1')}else{document.documentElement.innerHTML='<body style="background:#0f1117;color:#f43f5e;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh"><p>Incorrect password. Reload to try again.</p></body>'}});
+})();
+</script>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+--bg-primary:#0f1117;--bg-secondary:#1a1d27;--bg-card:#222636;--bg-hover:#2a2f42;
+--text-primary:#e8eaf0;--text-secondary:#9ea3b5;--text-muted:#6b7085;
+--accent-blue:#4a9eff;--accent-purple:#8b5cf6;--accent-teal:#14b8a6;--accent-amber:#f59e0b;
+--accent-rose:#f43f5e;--accent-green:#22c55e;--accent-indigo:#6366f1;
+--border:#2e3348;--border-light:#3a3f55;
+--radius:8px;--radius-lg:12px;
+}
+body{font-family:'Roboto',sans-serif;background:var(--bg-primary);color:var(--text-primary);line-height:1.6;min-height:100vh}
+a{color:var(--accent-blue);text-decoration:none}
+/* Layout */
+.app-header{background:var(--bg-secondary);border-bottom:1px solid var(--border);padding:16px 32px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.app-header h1{font-size:20px;font-weight:700;letter-spacing:-0.3px}
+.app-header h1 span{color:var(--accent-blue)}
+.header-meta{font-size:12px;color:var(--text-muted)}
+.nav-tabs{display:flex;gap:0;background:var(--bg-secondary);border-bottom:1px solid var(--border);padding:0 32px;overflow-x:auto}
+.nav-tab{padding:12px 20px;font-size:13px;font-weight:500;color:var(--text-secondary);cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;white-space:nowrap;user-select:none}
+.nav-tab:hover{color:var(--text-primary);background:var(--bg-hover)}
+.nav-tab.active{color:var(--accent-blue);border-bottom-color:var(--accent-blue)}
+.main-content{padding:24px 32px;max-width:1600px;margin:0 auto}
+.view{display:none}.view.active{display:block}
+/* Cards & Grid */
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.grid-2{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+.stat-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px}
+.stat-card .stat-label{font-size:12px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px}
+.stat-card .stat-value{font-size:28px;font-weight:700}
+.stat-card .stat-sub{font-size:12px;color:var(--text-secondary);margin-top:4px}
+.card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px;transition:border-color .2s}
+.card:hover{border-color:var(--border-light)}
+.card-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px}
+.card-title{font-size:15px;font-weight:600}
+.badge{display:inline-block;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:500}
+.badge-t1{background:rgba(74,158,255,0.15);color:var(--accent-blue)}
+.badge-t2{background:rgba(139,92,246,0.15);color:var(--accent-purple)}
+.badge-t3{background:rgba(107,112,133,0.15);color:var(--text-muted)}
+.badge-active{background:rgba(34,197,94,0.15);color:var(--accent-green)}
+.badge-prospect{background:rgba(245,158,11,0.15);color:var(--accent-amber)}
+.badge-paused{background:rgba(244,63,94,0.15);color:var(--accent-rose)}
+.score-bar{display:flex;align-items:center;gap:8px;margin-top:8px}
+.score-dots{display:flex;gap:2px}
+.score-dot{width:8px;height:8px;border-radius:50%;background:var(--border)}
+.score-dot.filled{background:var(--accent-blue)}
+.score-dot.high{background:var(--accent-green)}
+/* Section headers */
+.section-header{display:flex;justify-content:space-between;align-items:center;margin:32px 0 16px}
+.section-header:first-child{margin-top:0}
+.section-title{font-size:18px;font-weight:600}
+.section-subtitle{font-size:13px;color:var(--text-secondary)}
+/* Table */
+.table-container{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden}
+.table-controls{padding:16px;display:flex;gap:12px;flex-wrap:wrap;align-items:center;border-bottom:1px solid var(--border)}
+.search-input{background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius);padding:8px 12px;color:var(--text-primary);font-family:'Roboto',sans-serif;font-size:13px;width:240px}
+.search-input:focus{outline:none;border-color:var(--accent-blue)}
+.filter-select{background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius);padding:8px 12px;color:var(--text-primary);font-family:'Roboto',sans-serif;font-size:13px;cursor:pointer}
+.filter-select:focus{outline:none;border-color:var(--accent-blue)}
+.range-group{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-secondary)}
+.range-group input[type=range]{width:100px;accent-color:var(--accent-blue)}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;padding:10px 16px;font-size:12px;font-weight:500;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid var(--border);cursor:pointer;user-select:none;white-space:nowrap}
+th:hover{color:var(--text-primary)}
+th .sort-icon{margin-left:4px;opacity:0.4}
+th.sorted .sort-icon{opacity:1;color:var(--accent-blue)}
+td{padding:10px 16px;font-size:13px;border-bottom:1px solid var(--border)}
+tr:hover td{background:var(--bg-hover)}
+tr.expandable{cursor:pointer}
+.expand-row{display:none}
+.expand-row.open{display:table-row}
+.expand-row td{background:var(--bg-secondary);padding:16px 24px}
+.expand-content{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.expand-field{margin-bottom:8px}
+.expand-label{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:2px}
+.expand-value{font-size:13px;color:var(--text-primary)}
+.table-footer{padding:12px 16px;display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--text-muted);border-top:1px solid var(--border)}
+/* Heatmap */
+.heatmap-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px}
+.heatmap-cell{padding:16px 12px;border-radius:var(--radius);text-align:center;cursor:pointer;transition:transform .15s}
+.heatmap-cell:hover{transform:scale(1.03)}
+.heatmap-cell .cell-count{font-size:24px;font-weight:700;margin-bottom:2px}
+.heatmap-cell .cell-label{font-size:11px;opacity:0.85}
+/* Competitor */
+.threat-meter{display:flex;gap:2px;align-items:center}
+.threat-bar{width:12px;height:6px;border-radius:2px;background:var(--border)}
+.threat-bar.filled-low{background:var(--accent-green)}
+.threat-bar.filled-med{background:var(--accent-amber)}
+.threat-bar.filled-high{background:var(--accent-rose)}
+/* Product grid */
+.product-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px}
+.product-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px;cursor:pointer;transition:all .2s}
+.product-card:hover{border-color:var(--accent-blue);transform:translateY(-2px)}
+.product-card.selected{border-color:var(--accent-blue);box-shadow:0 0 0 1px var(--accent-blue)}
+.product-category-tag{font-size:10px;text-transform:uppercase;letter-spacing:0.5px;padding:2px 8px;border-radius:4px;display:inline-block;margin-bottom:8px}
+.cat-consumer{background:rgba(74,158,255,0.15);color:var(--accent-blue)}
+.cat-provider{background:rgba(139,92,246,0.15);color:var(--accent-purple)}
+.cat-network{background:rgba(20,184,166,0.15);color:var(--accent-teal)}
+.cat-data{background:rgba(245,158,11,0.15);color:var(--accent-amber)}
+/* Pitch */
+.pitch-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:24px;margin-bottom:16px}
+.pitch-section{margin-bottom:16px}
+.pitch-section:last-child{margin-bottom:0}
+.pitch-label{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px}
+.pitch-text{font-size:14px;line-height:1.7}
+.pitch-quick{background:var(--bg-secondary);border-left:3px solid var(--accent-blue);padding:16px;border-radius:0 var(--radius) var(--radius) 0;font-size:14px;line-height:1.7;margin-top:8px}
+/* Pipeline */
+.pipeline-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px;margin-bottom:12px}
+.pipeline-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.pipeline-config{font-size:12px;color:var(--text-secondary);margin-bottom:8px}
+.pipeline-meta{display:flex;gap:24px;font-size:12px;color:var(--text-muted)}
+/* Responsive */
+@media(max-width:1200px){.grid-4{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:768px){
+.grid-4,.grid-3,.grid-2{grid-template-columns:1fr}
+.main-content{padding:16px}
+.nav-tabs{padding:0 16px}
+.app-header{padding:12px 16px}
+.table-controls{flex-direction:column;align-items:stretch}
+.search-input{width:100%}
+.expand-content{grid-template-columns:1fr}
+}
+@media print{
+.nav-tabs,.table-controls,.app-header{display:none!important}
+.view{display:block!important}
+body{background:#fff;color:#000}
+.stat-card,.card,.table-container,.pipeline-card,.pitch-card,.product-card{border:1px solid #ccc;background:#fff}
+.stat-card .stat-label,.section-title,.card-title,.pitch-label,.expand-label{color:#333}
+}
+/* Scrollbar */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:var(--bg-primary)}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--border-light)}
+/* Matrix */
+.matrix-container{overflow-x:auto}
+.matrix-table{border-collapse:collapse;font-size:12px}
+.matrix-table th,.matrix-table td{padding:8px 10px;border:1px solid var(--border);text-align:center;min-width:80px}
+.matrix-table th{background:var(--bg-secondary);color:var(--text-secondary);font-weight:500}
+.matrix-table td.has-match{background:rgba(74,158,255,0.12);color:var(--accent-blue);font-weight:500}
+.matrix-table td.row-label{text-align:left;font-weight:500;color:var(--text-primary);background:var(--bg-secondary);position:sticky;left:0;min-width:160px}
+/* Insight callout */
+.insight-box{background:var(--bg-secondary);border:1px solid var(--accent-blue);border-radius:var(--radius-lg);padding:16px 20px;margin-bottom:16px}
+.insight-box .insight-title{font-size:13px;font-weight:600;color:var(--accent-blue);margin-bottom:4px}
+.insight-box .insight-text{font-size:13px;color:var(--text-secondary);line-height:1.6}
+/* Kanban */
+.kanban{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.kanban-col{background:var(--bg-secondary);border-radius:var(--radius-lg);padding:16px}
+.kanban-title{font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center}
+.kanban-count{background:var(--bg-card);padding:2px 8px;border-radius:10px;font-size:11px;color:var(--text-muted)}
+.kanban-item{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:12px;margin-bottom:8px;font-size:13px}
+.kanban-item:last-child{margin-bottom:0}
+.kanban-item .ki-company{font-weight:600;margin-bottom:4px}
+.kanban-item .ki-segment{font-size:11px;color:var(--text-muted)}
+.kanban-item .ki-score{font-size:11px;color:var(--accent-blue);margin-top:4px}
+@media(max-width:1024px){.kanban{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:600px){.kanban{grid-template-columns:1fr}}
+/* Top 10 threats */
+.threat-list-item{display:flex;align-items:center;gap:16px;padding:14px 16px;border-bottom:1px solid var(--border)}
+.threat-list-item:last-child{border-bottom:none}
+.threat-rank{font-size:20px;font-weight:700;color:var(--text-muted);width:32px;text-align:center}
+.threat-info{flex:1}
+.threat-name{font-weight:600;font-size:14px}
+.threat-desc{font-size:12px;color:var(--text-secondary);margin-top:2px}
+</style>
+</head>
+<body>
+<header class="app-header">
+<h1><span>Juno</span> BD Intelligence Dashboard</h1>
+<div class="header-meta">Project Juno | SonderMind | Updated 2026-03-03</div>
+</header>
+<nav class="nav-tabs" id="navTabs">
+<div class="nav-tab active" data-view="dashboard">Dashboard</div>
+<div class="nav-tab" data-view="market-map">Market Map Explorer</div>
+<div class="nav-tab" data-view="competitive">Competitive Landscape</div>
+<div class="nav-tab" data-view="products">Product Arsenal</div>
+<div class="nav-tab" data-view="pitches">Pitch Frameworks</div>
+<div class="nav-tab" data-view="pipeline">Pipeline</div>
+</nav>
+<main class="main-content" id="mainContent"></main>
+<script>
+const DATA = {"companies": [{"company": "Flo Health", "segment": "Women's Health", "whatWeSell": "AI Coach, Self-Care Tools, Total Brain Assessments", "buyer": "VP Product or Chief Health Officer", "dealPotential": 7, "tier": 3, "status": "Paused", "painPoint": "380M users but no clinical behavioral health layer despite users reporting anxiety, mood swings, PMDD", "whyCompelling": "Massive user base with high engagement but shallow clinical depth. BH is #1 unmet need users report. White-label AI Coach adds clinical credibility.", "competitiveRisk": "Flo may prefer to build internally given resources", "recommendedEntry": "Working Lontra demos and AI Connect agent ready"}, {"company": "Maven Clinic", "segment": "Women's Health", "whatWeSell": "AI Coach, AI Scribe, Clinical Data/Analytics", "buyer": "VP Clinical or Chief Medical Officer", "dealPotential": 8, "tier": 1, "status": "Not contacted", "painPoint": "2,000+ enterprise clients demand outcomes data Maven struggles to produce at scale; long wait times for perinatal mental health", "whyCompelling": "$1.7B valuation, 2,000 enterprise clients. AI Coach fills the between-session gap. Outcomes analytics strengthen value-based care positioning.", "competitiveRisk": "Spring Health could target Maven's employers. White-label, embeddable, specialized for perinatal BH is our advantage.", "recommendedEntry": "Direct outreach to VP Clinical, women's health conferences"}, {"company": "Midi Health", "segment": "Women's Health", "whatWeSell": "AI Coach, Total Brain, Self-Care Tools", "buyer": "Chief Medical Officer or VP Clinical Operations", "dealPotential": 8, "tier": 2, "status": "Not contacted", "painPoint": "60-70% of menopause patients have comorbid BH symptoms Midi cannot adequately treat", "whyCompelling": "$1B+ valuation. Total Brain cognitive assessment differentiates Midi vs Evernow/Gennev. Scalable AI support avoids cost of hiring psychiatrists.", "competitiveRisk": "Inbound interest or conference connection needed", "recommendedEntry": "Conference connection"}, {"company": "Ovia Health", "segment": "Women's Health", "whatWeSell": "AI Coach, Clinical Data/Analytics, Guardrails/Evals", "buyer": "VP Digital Health (LabCorp) or GM Ovia Health", "dealPotential": 6, "tier": 3, "status": "Monitor", "painPoint": "LabCorp wants clinical data and employer stickiness; perinatal depression screening mandated but no treatment pathway", "whyCompelling": "LabCorp data strategy needs clinical endpoints. Perinatal depression screening mandates create regulatory tailwind.", "competitiveRisk": "Corporate parent adds complexity", "recommendedEntry": "LabCorp digital health team"}, {"company": "Peanut", "segment": "Women's Health", "whatWeSell": "AI Coach, AI Connect, Self-Care Tools", "buyer": "CEO or VP Product", "dealPotential": 6, "tier": 3, "status": "Monitor", "painPoint": "Community platform with no clinical layer; users discuss mental health but Peanut cannot intervene or refer", "whyCompelling": "Users already discuss mental health. AI Connect referral pathway turns community app into care navigation platform.", "competitiveRisk": "Smaller company, limited deal size", "recommendedEntry": "Direct to CEO"}, {"company": "Evernow", "segment": "Women's Health", "whatWeSell": "AI Coach, Self-Care Tools, Total Brain Assessments", "buyer": "Chief Medical Officer or VP Product", "dealPotential": 6, "tier": 3, "status": "Monitor", "painPoint": "Prescribes hormones but anxiety/depression are #1 reason women seek menopause care; no therapy or coaching", "whyCompelling": "HRT alone does not address emotional/cognitive symptoms. AI Coach adds continuous engagement to transactional prescribing model.", "competitiveRisk": "Series A stage limits deal size", "recommendedEntry": "Direct outreach"}, {"company": "Allara Health", "segment": "Women's Health", "whatWeSell": "AI Coach, Clinical Workflow Tools, Clinical Data/Analytics", "buyer": "Chief Medical Officer or VP Clinical", "dealPotential": 7, "tier": 3, "status": "Monitor", "painPoint": "PCOS patients have 3x rates of anxiety/depression; care model is endocrinology-focused with limited BH", "whyCompelling": "Insurance partnerships (Aetna, BCBS, Cigna, UHC, Humana) expect comprehensive outcomes. Clinical workflow integration creates stickiness.", "competitiveRisk": "Growing fast but mid-size deal", "recommendedEntry": "Conference or direct"}, {"company": "Gennev", "segment": "Women's Health", "whatWeSell": "AI Coach, AI Scribe, Practice Management Platform", "buyer": "VP Digital Strategy (Unified Women's Healthcare)", "dealPotential": 5, "tier": 3, "status": "Monitor", "painPoint": "Post-acquisition, needs to differentiate within Unified's OB/GYN practice network", "whyCompelling": "Unified's 700+ OB/GYN practices need scalable behavioral health tools. AI Scribe saves clinician time.", "competitiveRisk": "Acquisition adds layers of decision-making", "recommendedEntry": "Unified Women's Healthcare leadership"}, {"company": "Kindbody", "segment": "Women's Health", "whatWeSell": "AI Coach, Self-Care Tools, Clinical Data/Analytics", "buyer": "Chief Medical Officer or VP Patient Experience", "dealPotential": 7, "tier": 3, "status": "Monitor", "painPoint": "Fertility patients experience extreme anxiety/depression during treatment; limited in-house BH", "whyCompelling": "Premium brand with employer clients demanding comprehensive care. Data linking mental health to fertility outcomes is a research differentiator.", "competitiveRisk": "Mid-size deal, niche market", "recommendedEntry": "Conference or direct"}, {"company": "Progyny", "segment": "Women's Health", "whatWeSell": "AI Coach, Clinical Data/Analytics, Care Coordination", "buyer": "VP Product or Chief Clinical Officer", "dealPotential": 8, "tier": 2, "status": "Not contacted", "painPoint": "Manages fertility benefits but no BH component despite member demand; needs ROI for self-insured employers", "whyCompelling": "Public company ($1.1B revenue), employer distribution, urgent need to expand beyond fertility. Clinical data strengthens CFO value proposition.", "competitiveRisk": "Conference connection needed at employer benefits events", "recommendedEntry": "Employer benefits conferences"}, {"company": "Omada Health", "segment": "Chronic Disease", "whatWeSell": "AI Coach, Clinical Data/Analytics, Guardrails/Evals", "buyer": "Chief Medical Officer or VP Product", "dealPotential": 7, "tier": 2, "status": "Not contacted", "painPoint": "Offers coaching-light behavioral health, not clinical; employer clients want integrated chronic + behavioral health", "whyCompelling": "Public company, 2,000+ enterprise customers. 30% of diabetes patients have comorbid depression. Guardrails framework addresses public company board concerns.", "competitiveRisk": "Public company politics slow deals", "recommendedEntry": "One Omada deal covers chronic disease + MSK"}, {"company": "Livongo", "segment": "Chronic Disease", "whatWeSell": "AI Coach, AI Connect, Clinical Data/Analytics", "buyer": "Chief Product Officer (Teladoc) or GM Livongo", "dealPotential": 6, "tier": 3, "status": "Monitor", "painPoint": "Teladoc paid $18.5B for Livongo but failed to integrate chronic + behavioral health", "whyCompelling": "AI Connect solves internal routing problem. Unified analytics across chronic + behavioral is what employers want.", "competitiveRisk": "Teladoc is struggling financially", "recommendedEntry": "Teladoc leadership"}, {"company": "Virta Health", "segment": "Chronic Disease", "whatWeSell": "AI Coach, Total Brain Assessments, Self-Care Tools", "buyer": "Chief Medical Officer or VP Clinical Operations", "dealPotential": 8, "tier": 1, "status": "Not contacted", "painPoint": "Depression and emotional eating are #1 dropout driver; outcomes-based pricing means dropout = lost revenue", "whyCompelling": "Total Brain predicts which patients will struggle, enabling early intervention. IPO preparation requires comprehensive care capabilities.", "competitiveRisk": "Low -- no competitor targets BH comorbidity in chronic disease management", "recommendedEntry": "Clinical conference, direct outreach to CMO"}, {"company": "Noom", "segment": "Chronic Disease", "whatWeSell": "AI Coach, Guardrails/Evals, Clinical Data/Analytics", "buyer": "Chief Clinical Officer or VP Health Programs", "dealPotential": 7, "tier": 2, "status": "Not contacted", "painPoint": "CBT-light approach criticized by clinicians; no clinical escalation pathway when users show signs of clinical depression", "whyCompelling": "Scale and budget. Users losing weight often uncover underlying depression/trauma. Guardrails addresses FDA/FTC scrutiny.", "competitiveRisk": "History of building internally", "recommendedEntry": "Partnership with Noom pharma partners (Novo, Lilly)"}, {"company": "Onduo/Verily Lightpath", "segment": "Chronic Disease", "whatWeSell": "AI Coach, Total Brain Assessments, Clinical Data/Analytics", "buyer": "VP Product (Verily) or GM Lightpath", "dealPotential": 5, "tier": 3, "status": "Monitor", "painPoint": "Onduo discontinued Jan 2026; Lightpath needs to differentiate; BH integration is a gap", "whyCompelling": "Greenfield opportunity to embed behavioral health from day one. Verily's data-first approach aligns.", "competitiveRisk": "Long procurement cycles, tendency to build", "recommendedEntry": "Verily product team"}, {"company": "Cecelia Health", "segment": "Chronic Disease", "whatWeSell": "AI Coach, Clinical Data/Analytics, AI Scribe", "buyer": "CEO or VP Partnerships", "dealPotential": 6, "tier": 3, "status": "Monitor", "painPoint": "Coaching-only model lacks clinical BH; pharma partners want holistic outcomes for GLP-1 products", "whyCompelling": "Pharma distribution channel is high-value. AI Scribe reduces documentation burden on coaches.", "competitiveRisk": "Smaller company", "recommendedEntry": "Pharma partner introductions"}, {"company": "Dario Health", "segment": "Chronic Disease", "whatWeSell": "AI Coach, AI Connect, Therapy Network", "buyer": "Chief Medical Officer or VP Product", "dealPotential": 6, "tier": 3, "status": "Monitor", "painPoint": "BH module is self-guided content only; members with clinical needs have nowhere to go", "whyCompelling": "AI Connect + Therapy Network creates full continuum. Multi-condition platform means BH touches every member.", "competitiveRisk": "Public micro-cap with limited budget", "recommendedEntry": "Direct outreach"}, {"company": "Glooko", "segment": "Chronic Disease", "whatWeSell": "AI Coach, Clinical Workflow Tools, Clinical Data/Analytics", "buyer": "VP Product or Chief Commercial Officer", "dealPotential": 5, "tier": 3, "status": "Monitor", "painPoint": "Data platform with no clinical intervention layer; health systems want actionable insights", "whyCompelling": "Behavioral nudges based on glucose data close the loop. Depression screening linked to glucose variability is novel.", "competitiveRisk": "Niche data platform, smaller deal", "recommendedEntry": "Health system channel"}, {"company": "Lark Health", "segment": "Chronic Disease", "whatWeSell": "AI Coach, Guardrails/Evals, Total Brain Assessments", "buyer": "Chief Medical Officer or VP AI/Product", "dealPotential": 7, "tier": 3, "status": "Monitor", "painPoint": "AI coaching is chatbot-level; health plan partners want more than chatbot support", "whyCompelling": "AI-first approach means they understand the value. Clinical upgrade is natural. Guardrails addresses health plan concerns.", "competitiveRisk": "May try to upgrade internally", "recommendedEntry": "Health plan partnership alignment"}, {"company": "Welldoc", "segment": "Chronic Disease", "whatWeSell": "AI Coach, Clinical Data/Analytics, Guardrails/Evals", "buyer": "Chief Medical Officer or VP Regulatory", "dealPotential": 6, "tier": 3, "status": "Monitor", "painPoint": "FDA-cleared platform needs to expand beyond diabetes; BH is most requested from payor partners", "whyCompelling": "FDA clearance is their moat; BH with clinical guardrails fits regulatory strategy. Payors explicitly asking for BH integration.", "competitiveRisk": "Smaller company, regulatory complexity", "recommendedEntry": "Regulatory/clinical conference"}, {"company": "Sword Health", "segment": "MSK/Chronic Pain", "whatWeSell": "AI Coach, Clinical Data/Analytics, Guardrails/Evals", "buyer": "Chief Medical Officer or VP Mind Product", "dealPotential": 7, "tier": 2, "status": "Not contacted", "painPoint": "Launched Sword Mind for mental health but early/unproven; needs clinical depth", "whyCompelling": "$4B valuation, ambitious mental health expansion. 40-60% chronic pain patients have comorbid depression. Employer clients want mental health included.", "competitiveRisk": "Sword tends to build/buy", "recommendedEntry": "Sword Mind underperforms expectations"}, {"company": "Hinge Health", "segment": "MSK/Chronic Pain", "whatWeSell": "AI Coach, Self-Care Tools, Clinical Data/Analytics", "buyer": "Chief Clinical Officer or VP Product", "dealPotential": 8, "tier": 1, "status": "Not contacted", "painPoint": "No behavioral health offering despite member demand; Sword Mind creates competitive pressure to respond", "whyCompelling": "Public company ($588M revenue), MSK market leader. Pain catastrophizing is #1 predictor of poor MSK outcomes. Integrated outcomes data strengthens employer story.", "competitiveRisk": "Sword Mind is the direct threat to Hinge. We help them respond faster than building internally.", "recommendedEntry": "Direct outreach, employer benefits conferences"}, {"company": "RecoveryOne", "segment": "MSK/Chronic Pain", "whatWeSell": "AI Coach, Clinical Data/Analytics", "buyer": "VP Product (TailorCare) or Chief Clinical Officer", "dealPotential": 5, "tier": 3, "status": "Monitor", "painPoint": "Post-acquisition by TailorCare; MSK navigation model needs BH for comprehensive outcomes", "whyCompelling": "Navigation model needs behavioral health as critical variable. Comprehensive outcomes differentiates vs Sword and Hinge.", "competitiveRisk": "Post-acquisition integration creates distraction", "recommendedEntry": "TailorCare leadership"}, {"company": "Physera (Omada)", "segment": "MSK/Chronic Pain", "whatWeSell": "AI Coach, Clinical Data/Analytics, Self-Care Tools", "buyer": "Chief Medical Officer (Omada)", "dealPotential": 7, "tier": 3, "status": "Monitor", "painPoint": "Omada's MSK offering via Physera lacks BH integration", "whyCompelling": "One deal with Omada covers both chronic disease and MSK. Public company needs integrated outcomes for Wall Street.", "competitiveRisk": "Covered under Omada deal", "recommendedEntry": "Omada leadership"}, {"company": "Vori Health", "segment": "MSK/Chronic Pain", "whatWeSell": "AI Coach, Clinical Workflow Tools", "buyer": "Chief Medical Officer", "dealPotential": 5, "tier": 3, "status": "Monitor", "painPoint": "Physician-led MSK model needs behavioral health for comprehensive care", "whyCompelling": "Physician-led model limits scale; AI Coach extends care beyond physician visits.", "competitiveRisk": "Smaller player", "recommendedEntry": "Direct"}, {"company": "Sober Sidekick", "segment": "Addiction/Recovery", "whatWeSell": "AI Connect, AI Coach, Therapy Network", "buyer": "CPO (Jordan Carlisle), CEO (Chris Thompson)", "dealPotential": 7, "tier": 1, "status": "Pilot negotiation", "painPoint": "1M+ downloads, 145K MAU but no clinical escalation pathway", "whyCompelling": "48% relapse reduction for engaged members, 93% accurate prediction model. Partnership kickoff completed Jan 2026.", "competitiveRisk": "Low -- partnership already in progress", "recommendedEntry": "Active deal -- finalizing KPIs, SLAs, pricing"}, {"company": "Bicycle Health", "segment": "Addiction/Recovery", "whatWeSell": "AI Coach, Self-Care Tools, Clinical Data/Analytics", "buyer": "Chief Medical Officer or VP Product", "dealPotential": 8, "tier": 1, "status": "Not contacted", "painPoint": "Relapse happens between appointments when patients are alone; no 24/7 support", "whyCompelling": "Well-funded ($103.8M), clear clinical need. Between-visit support directly impacts core retention metric.", "competitiveRisk": "Low -- no competitor targets the between-visit gap in addiction treatment", "recommendedEntry": "Clinical conference (ASAM), direct outreach"}, {"company": "Pelago", "segment": "Addiction/Recovery", "whatWeSell": "AI Coach, Clinical Data/Analytics, Total Brain", "buyer": "Chief Medical Officer or VP Product", "dealPotential": 7, "tier": 2, "status": "Not contacted", "painPoint": "75% SUD-BH comorbidity; employer distribution needs integrated SUD + BH", "whyCompelling": "$130M raised, employer distribution. Employer clients requesting integrated SUD + BH.", "competitiveRisk": "May build internally", "recommendedEntry": "Employer clients requesting integrated SUD + BH"}, {"company": "Workit Health", "segment": "Addiction/Recovery", "whatWeSell": "AI Coach, Self-Care Tools, AI Connect", "buyer": "VP Product", "dealPotential": 6, "tier": 3, "status": "Monitor", "painPoint": "SUD treatment platform needs between-visit behavioral support", "whyCompelling": "Good clinical fit but smaller deal size", "competitiveRisk": "Less urgency", "recommendedEntry": "Direct"}, {"company": "Boulder Care", "segment": "Addiction/Recovery", "whatWeSell": "AI Coach, Clinical Data/Analytics", "buyer": "Chief Medical Officer", "dealPotential": 6, "tier": 3, "status": "Monitor", "painPoint": "Medicaid-focused SUD treatment needs BH integration", "whyCompelling": "Value-based structure aligns with outcomes pricing", "competitiveRisk": "Longer sales cycle", "recommendedEntry": "Medicaid MCO introductions"}, {"company": "Groups Recover Together", "segment": "Addiction/Recovery", "whatWeSell": "AI Coach, AI Connect, Clinical Workflow Tools", "buyer": "VP Clinical Operations", "dealPotential": 6, "tier": 3, "status": "Monitor", "painPoint": "PE-backed, 150+ locations need scalable between-visit support", "whyCompelling": "Good fit but longer sales cycle due to PE ownership", "competitiveRisk": "PE-backed adds margin pressure", "recommendedEntry": "Direct to VP Clinical"}, {"company": "Hims & Hers", "segment": "DTC Telehealth", "whatWeSell": "AI Coach, Self-Care Tools, AI Connect", "buyer": "VP Mental Health Product or Chief Medical Officer", "dealPotential": 9, "tier": 1, "status": "Not contacted", "painPoint": "Mental health subscribers churn because prescription without support is not enough; 2.5M subscribers, $2.35B revenue", "whyCompelling": "Public company with budget, massive subscriber base. Mental health is stated growth priority. No clinical depth today.", "competitiveRisk": "Could build internally. Our advantage: clinical depth and speed.", "recommendedEntry": "LinkedIn to VP Mental Health Product, conference (HLTH, JPM Healthcare)"}, {"company": "Talkiatry", "segment": "DTC Telehealth", "whatWeSell": "AI Scribe, AI Coach, Clinical Workflow Tools", "buyer": "Chief Medical Officer or VP Clinical Operations", "dealPotential": 9, "tier": 1, "status": "Not contacted", "painPoint": "800+ psychiatrists cost $300K+/year; between-session support could reduce visit frequency by 20-30%", "whyCompelling": "Largest telepsychiatry practice, $452M raised. AI Scribe saves 15-20 min per visit. ROI is immediate and quantifiable.", "competitiveRisk": "Low -- no competitor offers integrated AI Scribe + AI Coach for psychiatry", "recommendedEntry": "LinkedIn to CMO, clinical conference (APA)"}, {"company": "Ro", "segment": "DTC Telehealth", "whatWeSell": "AI Coach, Self-Care Tools, Total Brain", "buyer": "VP Product or CMO", "dealPotential": 7, "tier": 2, "status": "Not contacted", "painPoint": "$7B valuation, vertically integrated, mental health is the strategic gap", "whyCompelling": "Ro Mind expansion needs clinical BH depth", "competitiveRisk": "Warm intro needed", "recommendedEntry": "Warm intro to CMO or VP Ro Mind"}, {"company": "Grow Therapy", "segment": "DTC Telehealth", "whatWeSell": "AI Scribe, Clinical Workflow Tools, AI Coach", "buyer": "VP Product or CEO", "dealPotential": 7, "tier": 2, "status": "Not contacted", "painPoint": "Fast-growing marketplace, 10K+ therapists need tools for stickiness", "whyCompelling": "$178M+ raised. AI Scribe + workflows reduce provider churn.", "competitiveRisk": "Marketplace scale creates need for differentiation", "recommendedEntry": "Direct outreach"}, {"company": "Headway", "segment": "DTC Telehealth", "whatWeSell": "AI Scribe, Practice Management Platform, Clinical Workflow Tools", "buyer": "VP Product", "dealPotential": 7, "tier": 2, "status": "Not contacted", "painPoint": "$2.3B valuation, 30K+ providers; provider churn is biggest problem", "whyCompelling": "Platform maturity creates tool investment phase. AI Scribe + workflows reduce churn.", "competitiveRisk": "May build internally", "recommendedEntry": "Direct outreach"}, {"company": "Alma", "segment": "DTC Telehealth", "whatWeSell": "AI Scribe, RCM/Credentialing, Practice Management Platform", "buyer": "VP Product or CTO", "dealPotential": 7, "tier": 2, "status": "Not contacted", "painPoint": "20K+ providers, insurance relationships; post-Spring Health acquisition dynamics", "whyCompelling": "Complementary to our RCM. Post-acquisition creates buying window.", "competitiveRisk": "Spring Health acquisition may limit flexibility", "recommendedEntry": "Post-acquisition timing"}, {"company": "Spring Health", "segment": "DTC Telehealth", "whatWeSell": "AI Coach, Total Brain, Proprietary Data Assets", "buyer": "VP Product or VP Partnerships", "dealPotential": 7, "tier": 2, "status": "Not contacted", "painPoint": "Large valuation, employer distribution, investing in AI", "whyCompelling": "Alma integration creates buying window for complementary tools", "competitiveRisk": "Direct competitor in some segments", "recommendedEntry": "Alma integration creates buying window"}, {"company": "Cerebral", "segment": "DTC Telehealth", "whatWeSell": "AI Scribe, Clinical Workflow Tools", "buyer": "VP Product", "dealPotential": 4, "tier": 3, "status": "Monitor", "painPoint": "Regulatory overhang, trust deficit from DOJ investigation", "whyCompelling": "Scale of clinician network, broad specialty coverage", "competitiveRisk": "Brand damage, regulatory risk", "recommendedEntry": "Monitor only"}, {"company": "Brightside Health", "segment": "DTC Telehealth", "whatWeSell": "AI Scribe, Practice Management", "buyer": "VP Product", "dealPotential": 5, "tier": 3, "status": "Monitor", "painPoint": "Growing but needs infrastructure", "whyCompelling": "Integrated care coordination, Suicide Prevention program differentiation", "competitiveRisk": "Consumer-focused, limited B2B", "recommendedEntry": "Monitor"}, {"company": "JPMorgan Chase (Morgan Health)", "segment": "Employers", "whatWeSell": "AI Coach, Total Brain, Clinical Data/Analytics, Therapy Network", "buyer": "Head of Morgan Health or VP Employee Benefits", "dealPotential": 9, "tier": 1, "status": "Not contacted", "painPoint": "$250M innovation fund looking for BH solutions; 300K employees; BH is fastest-growing cost category", "whyCompelling": "Dedicated innovation fund with stated BH interest. 300K employees. They are literally looking for what we sell.", "competitiveRisk": "Spring Health, Lyra in large employer accounts. Modularity and Total Brain screening are differentiators.", "recommendedEntry": "Morgan Health team direct outreach, JPM Healthcare Conference"}, {"company": "Deloitte", "segment": "Employers", "whatWeSell": "AI Coach, Total Brain, Self-Care Tools", "buyer": "VP Benefits", "dealPotential": 7, "tier": 2, "status": "Not contacted", "painPoint": "175K employees, $100-150K attrition cost per consultant departure", "whyCompelling": "High attrition costs make BH ROI clear", "competitiveRisk": "Benefits cycle timing", "recommendedEntry": "Benefits cycle timing"}, {"company": "Amazon", "segment": "Employers", "whatWeSell": "AI Coach, AI Connect, Self-Care Tools, Total Brain", "buyer": "VP Employee Benefits", "dealPotential": 7, "tier": 2, "status": "Not contacted", "painPoint": "1.5M employees, warehouse worker BH is a PR and retention issue", "whyCompelling": "Massive scale, BH is both PR risk and retention issue", "competitiveRisk": "Benefits Connector upgrade cycle", "recommendedEntry": "Benefits cycle"}, {"company": "Walmart", "segment": "Employers", "whatWeSell": "AI Coach, Therapy Network, Clinical Data/Analytics", "buyer": "VP Employee Benefits", "dealPotential": 6, "tier": 3, "status": "Monitor", "painPoint": "Largest private employer, BH needs at scale", "whyCompelling": "Massive scale but cost-sensitive", "competitiveRisk": "Lyra incumbent, extremely cost-sensitive", "recommendedEntry": "Monitor"}, {"company": "Starbucks", "segment": "Employers", "whatWeSell": "AI Coach, Self-Care Tools", "buyer": "VP Benefits", "dealPotential": 6, "tier": 3, "status": "Monitor", "painPoint": "Progressive brand but union negotiations add complexity", "whyCompelling": "Progressive employer values", "competitiveRisk": "Union complexity", "recommendedEntry": "Monitor"}, {"company": "Google", "segment": "Employers", "whatWeSell": "AI Coach, Total Brain", "buyer": "VP Benefits", "dealPotential": 5, "tier": 3, "status": "Monitor", "painPoint": "Tends to build internally", "whyCompelling": "Massive employer", "competitiveRisk": "Builds internally, Verily subsidiary", "recommendedEntry": "Monitor"}, {"company": "Salesforce", "segment": "Employers", "whatWeSell": "AI Coach, Total Brain", "buyer": "VP Benefits", "dealPotential": 5, "tier": 3, "status": "Monitor", "painPoint": "Restructuring distraction", "whyCompelling": "Large employer", "competitiveRisk": "Lyra incumbent, restructuring", "recommendedEntry": "Monitor"}, {"company": "Cisco", "segment": "Employers", "whatWeSell": "Clinical Data/Analytics", "buyer": "VP Benefits", "dealPotential": 5, "tier": 3, "status": "Monitor", "painPoint": "Already committed but needs analytics", "whyCompelling": "Needs analytics layer", "competitiveRisk": "Not net-new BH investment", "recommendedEntry": "Monitor"}, {"company": "Target", "segment": "Employers", "whatWeSell": "AI Coach, Self-Care Tools", "buyer": "VP Benefits", "dealPotential": 6, "tier": 3, "status": "Monitor", "painPoint": "Progressive but mid-tier urgency", "whyCompelling": "Progressive employer", "competitiveRisk": "Mid-tier urgency", "recommendedEntry": "Monitor"}, {"company": "Mercer (Marsh McLennan)", "segment": "Benefits Consultants/Brokers", "whatWeSell": "Full platform partnership -- AI Coach + Total Brain + Analytics + Therapy Network", "buyer": "National Practice Leader, BH or Health & Benefits", "dealPotential": 10, "tier": 1, "status": "Not contacted", "painPoint": "Need digital BH alternatives for employer clients; 2026 survey shows 35% adding onsite counseling", "whyCompelling": "One Mercer win = access to Fortune 500 benefits decisions. Channel economics beat direct sales 10:1. Curated solution stack reduces advisory burden.", "competitiveRisk": "Spring Health, Lyra, Headspace all pitch to brokers. Our advantage: modular, white-label, outcomes data.", "recommendedEntry": "Conference (HLTH, Employer Healthcare Congress), direct to National Practice Leader"}, {"company": "Aon", "segment": "Benefits Consultants/Brokers", "whatWeSell": "Clinical Data/Analytics, Total Brain Assessments, AI Coach + Therapy Network", "buyer": "Head of Health Solutions or National BH Practice Leader", "dealPotential": 9, "tier": 1, "status": "Not contacted", "painPoint": "Analytics-first approach needs BH data more than anyone; 5,000+ employer clients", "whyCompelling": "Analytics culture aligns perfectly. Standardized Total Brain assessments create benchmarking data Aon can monetize. One deal = 5,000+ clients.", "competitiveRisk": "Same broker competition. Analytics depth is differentiator.", "recommendedEntry": "Thought leadership (co-author BH cost analysis), conference"}, {"company": "Willis Towers Watson (WTW)", "segment": "Benefits Consultants/Brokers", "whatWeSell": "Full platform + actuarial integration", "buyer": "Head of Health & Benefits or BH Practice Leader", "dealPotential": 9, "tier": 1, "status": "Not contacted", "painPoint": "Benefits Trends Survey shows BH is #1 employer concern; their own data proves market need", "whyCompelling": "Publishes research proving demand. Actuarial integration means outcomes data feeds cost projection models. Unique to us.", "competitiveRisk": "Same broker dynamics. Actuarial integration is unique.", "recommendedEntry": "WTW research team collaboration, conference"}, {"company": "Lockton", "segment": "Benefits Consultants/Brokers", "whatWeSell": "Total Brain + AI Coach + Therapy Network + Analytics", "buyer": "Nicole Stec (main contact)", "dealPotential": 8, "tier": 1, "status": "Early qualification", "painPoint": "Largest private broker, mid-market focus, faster decisions than public peers", "whyCompelling": "Inbound interest. Cognitive Health / brain health framing resonated. $0.80 PEPM for 13K-employee client.", "competitiveRisk": "Low -- inbound interest", "recommendedEntry": "Meeting with full wellness buying team early April"}, {"company": "Gallagher", "segment": "Benefits Consultants/Brokers", "whatWeSell": "Full platform + behavioral health expertise", "buyer": "National Practice Leader", "dealPotential": 8, "tier": 2, "status": "Not contacted", "painPoint": "Buck acquisition ($660M) signals investment in benefits consulting; BH is a gap", "whyCompelling": "Integration of Buck creates buying window", "competitiveRisk": "Integration timing", "recommendedEntry": "Post-Buck integration"}, {"company": "HUB International", "segment": "Benefits Consultants/Brokers", "whatWeSell": "Full platform partnership", "buyer": "Practice Leader", "dealPotential": 6, "tier": 3, "status": "Monitor", "painPoint": "PE ownership adds margin pressure", "whyCompelling": "Large broker network", "competitiveRisk": "Acquisitive chaos", "recommendedEntry": "Monitor"}, {"company": "USI", "segment": "Benefits Consultants/Brokers", "whatWeSell": "Analytics + platform", "buyer": "Practice Leader", "dealPotential": 6, "tier": 3, "status": "Monitor", "painPoint": "Analytics focus but smaller, PE-owned", "whyCompelling": "Analytics alignment", "competitiveRisk": "Smaller, PE-owned", "recommendedEntry": "Monitor"}, {"company": "Acrisure", "segment": "Benefits Consultants/Brokers", "whatWeSell": "Full platform", "buyer": "Practice Leader", "dealPotential": 5, "tier": 3, "status": "Monitor", "painPoint": "AI positioning but acquisitive chaos", "whyCompelling": "AI interest", "competitiveRisk": "Acquisitive chaos makes partnerships hard", "recommendedEntry": "Monitor"}, {"company": "Centene (Ambetter, WellCare)", "segment": "Health Plans/Payors", "whatWeSell": "AI Coach, AI Connect, Clinical Data/Analytics, Total Brain", "buyer": "VP Behavioral Health, CMO, VP Innovation", "dealPotential": 9, "tier": 1, "status": "Not contacted", "painPoint": "Largest Medicaid MCO with BH utilization driving margin pressure; CMS 10-day appointment standard hard to meet", "whyCompelling": "Massive scale (17.7% national Medicaid share). Direct margin relief. CMS compliance. AI Connect helps hit access standard.", "competitiveRisk": "Spring Health, Lyra pitch to payors. 16K provider network as overflow + modular AI tools is our advantage.", "recommendedEntry": "Conference (AHIP, Medicaid managed care), direct outreach"}, {"company": "Elevance Health (Anthem BCBS)", "segment": "Health Plans/Payors", "whatWeSell": "AI Connect, Therapy Network, Clinical Data/Analytics, Care Coordination", "buyer": "SVP Behavioral Health, Chief Digital Officer", "dealPotential": 9, "tier": 1, "status": "Not contacted", "painPoint": "OIG documented <50% county BH workforce in-network; network adequacy gaps", "whyCompelling": "2nd largest MCO with documented network gaps. AI Connect routes members to 16K providers as overflow.", "competitiveRisk": "Elevance builds internally (Carelon). Speed and existing network are our advantage.", "recommendedEntry": "Conference, Elevance innovation team"}, {"company": "CVS Health (Aetna)", "segment": "Health Plans/Payors", "whatWeSell": "AI Coach, AI Connect, Total Brain", "buyer": "VP Digital Health or VP BH", "dealPotential": 7, "tier": 2, "status": "Not contacted", "painPoint": "Retail health model has no BH capability; MinuteClinic doesn't do therapy", "whyCompelling": "Health Hubs could integrate Total Brain screening. Massive retail footprint.", "competitiveRisk": "CVS Health Hub expansion timeline", "recommendedEntry": "Health Hub expansion timing"}, {"company": "Molina Healthcare", "segment": "Health Plans/Payors", "whatWeSell": "AI Coach, Self-Care Tools, AI Connect, Clinical Data/Analytics", "buyer": "VP BH or CMO", "dealPotential": 7, "tier": 2, "status": "Not contacted", "painPoint": "Near-pure Medicaid book = concentrated BH risk; mission alignment", "whyCompelling": "Mission alignment, concentrated BH need", "competitiveRisk": "State contract renewal cycle", "recommendedEntry": "State contract renewals"}, {"company": "Horizon BCBS NJ", "segment": "Health Plans/Payors", "whatWeSell": "AI Coach, AI Connect, Clinical Data/Analytics", "buyer": "VP Innovation", "dealPotential": 6, "tier": 3, "status": "Monitor", "painPoint": "Innovation-forward but regional", "whyCompelling": "Innovation culture, pilot-size deal", "competitiveRisk": "Regional, smaller deal", "recommendedEntry": "Innovation team outreach"}, {"company": "BCBS MN", "segment": "Health Plans/Payors", "whatWeSell": "AI Connect, Clinical Data/Analytics", "buyer": "VP BH", "dealPotential": 6, "tier": 3, "status": "Monitor", "painPoint": "Already buying BH solutions", "whyCompelling": "Integration layer opportunity", "competitiveRisk": "Already has BH vendor", "recommendedEntry": "Integration pitch"}, {"company": "BCBS IL", "segment": "Health Plans/Payors", "whatWeSell": "AI Coach, AI Connect", "buyer": "VP BH", "dealPotential": 6, "tier": 3, "status": "Monitor", "painPoint": "Active BH investment but regional", "whyCompelling": "Active investment cycle", "competitiveRisk": "Regional, smaller deal", "recommendedEntry": "Monitor"}, {"company": "BCBS AZ", "segment": "Health Plans/Payors", "whatWeSell": "AI Coach, AI Connect", "buyer": "VP BH", "dealPotential": 6, "tier": 3, "status": "Monitor", "painPoint": "Active BH investment but regional", "whyCompelling": "Active investment cycle", "competitiveRisk": "Regional", "recommendedEntry": "Monitor"}, {"company": "CareFirst BCBS", "segment": "Health Plans/Payors", "whatWeSell": "AI Coach, AI Connect", "buyer": "VP BH", "dealPotential": 6, "tier": 3, "status": "Monitor", "painPoint": "Active BH investment but regional", "whyCompelling": "Active investment cycle", "competitiveRisk": "Regional", "recommendedEntry": "Monitor"}, {"company": "Amerigroup", "segment": "Health Plans/Payors", "whatWeSell": "AI Coach, AI Connect", "buyer": "VP BH", "dealPotential": 6, "tier": 3, "status": "Monitor", "painPoint": "Separate from Elevance, state-level sale", "whyCompelling": "Medicaid focus aligns", "competitiveRisk": "State-level complexity", "recommendedEntry": "State-level outreach"}, {"company": "Quantum Health", "segment": "Care Navigation", "whatWeSell": "AI Coach, AI Connect, Clinical Data/Analytics, Therapy Network", "buyer": "Chief Product Officer, VP Clinical Programs", "dealPotential": 8, "tier": 1, "status": "Not contacted", "painPoint": "Navigation stops at referral; no care delivery after BH referral", "whyCompelling": "Pre-IPO momentum. Demonstrating BH outcomes strengthens valuation. Clear gap where navigation ends and care begins.", "competitiveRisk": "Accolade, Included Health compete. Therapy network creates closed loop.", "recommendedEntry": "Direct outreach, conference"}, {"company": "Accolade", "segment": "Care Navigation", "whatWeSell": "AI Connect, Clinical Data/Analytics, Total Brain, Guardrails/Evals", "buyer": "VP Product or VP Clinical", "dealPotential": 7, "tier": 2, "status": "Not contacted", "painPoint": "Public, ~$400M revenue; human care teams expensive to scale", "whyCompelling": "Earnings pressure to show AI adoption", "competitiveRisk": "May build internally", "recommendedEntry": "Earnings pressure creates buying window"}, {"company": "Included Health", "segment": "Care Navigation", "whatWeSell": "AI Coach, Clinical Workflow Tools, Clinical Data/Analytics, Guardrails/Evals", "buyer": "VP Product or VP Clinical", "dealPotential": 7, "tier": 2, "status": "Not contacted", "painPoint": "Competing with Accolade on integration; deeper BH = differentiation", "whyCompelling": "Well-funded, competitive pressure from Accolade", "competitiveRisk": "Competitive pressure drives buying", "recommendedEntry": "Competitive pressure from Accolade"}, {"company": "Alight Solutions", "segment": "Care Navigation", "whatWeSell": "AI Coach, Self-Care Tools, Total Brain, Clinical Data/Analytics", "buyer": "VP Product or VP Wellbeing", "dealPotential": 7, "tier": 2, "status": "Not contacted", "painPoint": "$3B revenue, Fortune 500 reach; BH is gap in wellbeing platform", "whyCompelling": "Massive employer reach through Worklife platform", "competitiveRisk": "Annual enrollment cycle timing", "recommendedEntry": "Annual enrollment cycle"}, {"company": "Transcarent", "segment": "Care Navigation", "whatWeSell": "AI Coach, AI Connect, Clinical Data/Analytics, Total Brain", "buyer": "VP Product or VP Clinical", "dealPotential": 7, "tier": 2, "status": "Not contacted", "painPoint": "Founded by ex-Livongo CEO; one place for health brand needs BH", "whyCompelling": "Innovation culture creates receptivity", "competitiveRisk": "Innovation-friendly but competitive", "recommendedEntry": "Innovation culture alignment"}, {"company": "LifeStance Health", "segment": "Large Provider Groups", "whatWeSell": "AI Scribe, Clinical Workflow Tools, Total Brain, Guardrails/Evals", "buyer": "Chief Clinical Officer or VP Innovation", "dealPotential": 8, "tier": 1, "status": "Early qualification", "painPoint": "Largest outpatient BH provider actively investing in AI for productivity", "whyCompelling": "Custom deck prepared. Interest in therapist tools + AI coaching. Exec alignment target mid-March.", "competitiveRisk": "Budget cycle for AI investments", "recommendedEntry": "Active deal -- exec alignment mid-March"}, {"company": "Acadia Healthcare", "segment": "Large Provider Groups", "whatWeSell": "AI Coach, AI Connect, Care Coordination, Clinical Data/Analytics", "buyer": "Chief Clinical Officer, VP Innovation", "dealPotential": 8, "tier": 1, "status": "Not contacted", "painPoint": "Already piloting Hippocratic AI for discharge follow-up; 260+ facilities", "whyCompelling": "Already piloting AI (low education barrier). Step-down referrals to SonderMind create closed loop. Readmission reduction tied to value-based contracts.", "competitiveRisk": "Hippocratic AI is incumbent pilot. BH-specialized post-discharge engagement is our advantage.", "recommendedEntry": "Direct to VP Innovation, clinical conference"}, {"company": "UHS", "segment": "Large Provider Groups", "whatWeSell": "AI Coach, AI Connect, Clinical Workflow Tools, AI Scribe", "buyer": "VP Clinical Operations", "dealPotential": 7, "tier": 2, "status": "Not contacted", "painPoint": "200+ BH facilities need scalable AI tools", "whyCompelling": "Already piloting Hippocratic AI", "competitiveRisk": "Hippocratic pilot results", "recommendedEntry": "If Hippocratic pilot disappoints"}, {"company": "Talkspace", "segment": "Large Provider Groups", "whatWeSell": "Guardrails/Evals", "buyer": "VP Product", "dealPotential": 5, "tier": 3, "status": "Monitor", "painPoint": "Building own LLM", "whyCompelling": "Guardrails/evals layer only opportunity", "competitiveRisk": "Building own LLM", "recommendedEntry": "Monitor"}, {"company": "Teladoc/BetterHelp", "segment": "Large Provider Groups", "whatWeSell": "AI Scribe, Clinical Workflow Tools", "buyer": "VP Product", "dealPotential": 5, "tier": 3, "status": "Monitor", "painPoint": "Under margin pressure, BetterHelp commoditized", "whyCompelling": "Margin pressure creates tool buying interest", "competitiveRisk": "Financial struggles", "recommendedEntry": "Monitor"}, {"company": "Pathlight/Springstone", "segment": "Large Provider Groups", "whatWeSell": "AI Coach, Clinical Workflow Tools", "buyer": "VP Clinical", "dealPotential": 5, "tier": 3, "status": "Monitor", "painPoint": "Niche provider, Lifepoint parent adds complexity", "whyCompelling": "Clinical alignment", "competitiveRisk": "Parent company complexity", "recommendedEntry": "Monitor"}, {"company": "Summit BHC", "segment": "Large Provider Groups", "whatWeSell": "AI Coach, AI Scribe", "buyer": "VP Clinical", "dealPotential": 5, "tier": 3, "status": "Monitor", "painPoint": "Leadership transition", "whyCompelling": "Transition = opportunity", "competitiveRisk": "Uncertainty during transition", "recommendedEntry": "Monitor"}, {"company": "VA (Veterans Affairs)", "segment": "University/Institutional", "whatWeSell": "AI Coach, AI Connect, Clinical Data/Analytics, Guardrails/Evals", "buyer": "VA Office of Mental Health, VA Office of IT", "dealPotential": 9, "tier": 1, "status": "Not contacted", "painPoint": "Veteran suicide prevention is national priority; BRAVE telehealth has weeks-long wait times; 9M+ veterans", "whyCompelling": "National priority, massive scale, federal funding, bipartisan support. Provider shortage makes technology the only scalable solution.", "competitiveRisk": "Hippocratic AI piloting at VA. BH-specialized vs generic health AI is our advantage.", "recommendedEntry": "Government BD channel, VA innovation programs (LEAF, VHA Innovation)"}, {"company": "CSU System", "segment": "University/Institutional", "whatWeSell": "AI Coach, Self-Care Tools, AI Connect, Clinical Data/Analytics, Total Brain", "buyer": "Chancellor's office", "dealPotential": 8, "tier": 2, "status": "Not contacted", "painPoint": "$120M state BH funding, 460K students, outcomes mandate", "whyCompelling": "State-funded mandates, assess-coach-escalate-measure full loop", "competitiveRisk": "State funding renewal cycle", "recommendedEntry": "State funding cycle"}, {"company": "SUNY", "segment": "University/Institutional", "whatWeSell": "AI Coach, Self-Care Tools, AI Connect, Clinical Data/Analytics, Total Brain", "buyer": "Chancellor's office", "dealPotential": 8, "tier": 2, "status": "Not contacted", "painPoint": "64 campuses, 400K students; grant-funded training is not scalable", "whyCompelling": "Massive scale, state system", "competitiveRisk": "Decision timeline", "recommendedEntry": "Chancellor's office"}, {"company": "TRICARE/DHA", "segment": "University/Institutional", "whatWeSell": "AI Coach, AI Connect, Clinical Data/Analytics, Total Brain", "buyer": "DHA leadership", "dealPotential": 8, "tier": 2, "status": "Not contacted", "painPoint": "T-5 contracts require BH outcomes monitoring; 7-day access standard", "whyCompelling": "Regulatory mandate, military population need", "competitiveRisk": "T-5 contract implementation timeline", "recommendedEntry": "Government BD, T-5 timeline"}, {"company": "Florida State University System", "segment": "University/Institutional", "whatWeSell": "AI Coach, Self-Care Tools, AI Connect", "buyer": "System leadership", "dealPotential": 6, "tier": 3, "status": "Monitor", "painPoint": "Large system but less funding than CA/NY", "whyCompelling": "Scale opportunity", "competitiveRisk": "Budget-constrained", "recommendedEntry": "Monitor"}, {"company": "CA Community Colleges", "segment": "University/Institutional", "whatWeSell": "AI Coach, Self-Care Tools, AI Connect", "buyer": "System leadership", "dealPotential": 6, "tier": 3, "status": "Monitor", "painPoint": "Huge scale but budget-constrained", "whyCompelling": "Massive student population", "competitiveRisk": "Budget constraints", "recommendedEntry": "Monitor"}, {"company": "IHS (Indian Health Service)", "segment": "University/Institutional", "whatWeSell": "AI Coach, AI Connect, Clinical Data/Analytics", "buyer": "IHS leadership", "dealPotential": 6, "tier": 3, "status": "Monitor", "painPoint": "Critical need but federal procurement complexity", "whyCompelling": "Acute need, underserved population", "competitiveRisk": "Federal procurement complexity", "recommendedEntry": "Monitor"}, {"company": "OpenAI", "segment": "Data/AI Partners", "whatWeSell": "Guardrails/Evals, Proprietary Data Assets, Clinical Data/Analytics", "buyer": "VP Health, Head of Safety, Head of Partnerships", "dealPotential": 9, "tier": 1, "status": "Not contacted", "painPoint": "ChatGPT Health users asking about mental health; BH is highest-liability domain", "whyCompelling": "BH is biggest safety risk and biggest gap. Our data and guardrails are assets they cannot replicate.", "competitiveRisk": "Low -- no other company has SonderMind's combination of clinical BH data + guardrails", "recommendedEntry": "Direct to VP Health, Anthropic relationship as leverage"}, {"company": "Anthropic", "segment": "Data/AI Partners", "whatWeSell": "Guardrails/Evals, Proprietary Data Assets, Total Brain, Clinical Data/Analytics", "buyer": "Head of Healthcare, Head of Trust & Safety", "dealPotential": 9, "tier": 1, "status": "Not contacted", "painPoint": "Claude for Healthcare partnered with IASP for suicide prevention; needs full BH clinical depth", "whyCompelling": "Mission alignment on safety. Claude for Healthcare needs BH-specific eval datasets. IASP partnership shows investment.", "competitiveRisk": "Low -- same data moat", "recommendedEntry": "Direct (Val may have existing Anthropic connections)"}, {"company": "Apple Health", "segment": "Data/AI Partners", "whatWeSell": "Total Brain Assessments, Proprietary Data Assets, Guardrails/Evals", "buyer": "Apple Health team, VP Health Technologies", "dealPotential": 9, "tier": 1, "status": "Not contacted", "painPoint": "Apple Health Study lists mental health as focus; no clinical BH assessment on Apple Watch", "whyCompelling": "Total Brain on Apple Watch is transformative product concept. Apple has distribution; we have clinical BH depth.", "competitiveRisk": "Apple could build or acquire. Speed and clinical validation are advantages.", "recommendedEntry": "Apple Health partnerships team, research collaboration pitch"}, {"company": "Microsoft (Nuance/DAX)", "segment": "Data/AI Partners", "whatWeSell": "AI Scribe (BH-specific), Guardrails/Evals, Proprietary Data", "buyer": "Nuance/DAX product team", "dealPotential": 8, "tier": 2, "status": "Not contacted", "painPoint": "DAX dominates clinical docs but has no BH-specific models", "whyCompelling": "BH-specific AI Scribe fills a gap in their product line", "competitiveRisk": "Direct intro needed", "recommendedEntry": "Direct intro to Nuance/DAX team"}, {"company": "Epic Systems", "segment": "Data/AI Partners", "whatWeSell": "AI Scribe (BH-specific), Clinical Workflow Tools, Total Brain, Clinical Data/Analytics", "buyer": "App Orchard team", "dealPotential": 7, "tier": 2, "status": "Not contacted", "painPoint": "BH module widely criticized; Epic integration = 50%+ hospital distribution", "whyCompelling": "App Orchard marketplace is massive distribution channel", "competitiveRisk": "App Orchard approval process", "recommendedEntry": "App Orchard partnership"}, {"company": "Samsung Health", "segment": "Data/AI Partners", "whatWeSell": "Total Brain, Proprietary Data", "buyer": "VP Health", "dealPotential": 6, "tier": 3, "status": "Monitor", "painPoint": "Competitive pressure vs Apple", "whyCompelling": "Competitive response to Apple Health", "competitiveRisk": "Less strategic than Apple", "recommendedEntry": "Monitor"}, {"company": "Meta", "segment": "Data/AI Partners", "whatWeSell": "Guardrails/Evals, Data", "buyer": "VP Health", "dealPotential": 5, "tier": 3, "status": "Monitor", "painPoint": "Regulatory risk-driven", "whyCompelling": "Complex organization", "competitiveRisk": "Regulatory complexity", "recommendedEntry": "Monitor"}, {"company": "Palantir", "segment": "Data/AI Partners", "whatWeSell": "Clinical Data/Analytics", "buyer": "Health team", "dealPotential": 5, "tier": 3, "status": "Monitor", "painPoint": "Infrastructure play, indirect", "whyCompelling": "Data analytics alignment", "competitiveRisk": "Indirect opportunity", "recommendedEntry": "Monitor"}, {"company": "Oura", "segment": "Wellness/Wearables", "whatWeSell": "Total Brain Assessments, Proprietary Data Assets, Guardrails/Evals", "buyer": "VP Health, Head of Clinical Partnerships", "dealPotential": 8, "tier": 1, "status": "Not contacted", "painPoint": "$11B valuation needs to move from tracker to health system; BH is the gap; Cumulative Stress metric needs clinical validation", "whyCompelling": "$11B valuation, health system ambitions. DoD partnership creates government channel alignment. Total Brain validates stress metrics clinically.", "competitiveRisk": "First-mover on clinical BH validation wins", "recommendedEntry": "Direct to VP Health, CES/health tech conference"}, {"company": "Headspace", "segment": "Wellness/Wearables", "whatWeSell": "Guardrails/Evals, Total Brain, Clinical Data/Analytics, AI Connect", "buyer": "Chief Medical Officer, VP Product, VP Enterprise", "dealPotential": 8, "tier": 1, "status": "Not contacted", "painPoint": "Jan 2026 launched smart triage and progress tracking; pre-IPO; Cigna 7M member partnership requires clinical depth", "whyCompelling": "Pre-IPO, building clinical AI features. Cigna 7M member partnership requires clinical-grade BH outcomes they don't have.", "competitiveRisk": "May build internally. Clinical validation and speed are our advantages.", "recommendedEntry": "Direct to CMO, conference"}, {"company": "Calm", "segment": "Wellness/Wearables", "whatWeSell": "Clinical Data/Analytics, Total Brain, AI Coach, Guardrails/Evals", "buyer": "VP Enterprise or VP Clinical", "dealPotential": 7, "tier": 2, "status": "Not contacted", "painPoint": "4,000 B2B clients but employers demanding clinical proof of ROI", "whyCompelling": "Massive B2B distribution needs clinical credibility", "competitiveRisk": "Enterprise sales cycle", "recommendedEntry": "Enterprise sales cycle"}, {"company": "Peloton", "segment": "Wellness/Wearables", "whatWeSell": "AI Coach, Self-Care Tools", "buyer": "VP Product", "dealPotential": 5, "tier": 3, "status": "Monitor", "painPoint": "Core business is fitness, BH is adjacent", "whyCompelling": "Adjacent opportunity", "competitiveRisk": "Fitness-first culture", "recommendedEntry": "Monitor"}, {"company": "Strava", "segment": "Wellness/Wearables", "whatWeSell": "Self-Care Tools, AI Coach", "buyer": "VP Product", "dealPotential": 5, "tier": 3, "status": "Monitor", "painPoint": "Pure fitness, BH is very adjacent", "whyCompelling": "Large engaged user base", "competitiveRisk": "Pure fitness focus", "recommendedEntry": "Monitor"}, {"company": "Garmin", "segment": "Wellness/Wearables", "whatWeSell": "Total Brain, Self-Care Tools", "buyer": "VP Health", "dealPotential": 5, "tier": 3, "status": "Monitor", "painPoint": "Niche military alignment", "whyCompelling": "Military/defense alignment", "competitiveRisk": "Niche", "recommendedEntry": "Monitor"}, {"company": "Ultrahuman", "segment": "Wellness/Wearables", "whatWeSell": "Total Brain, AI Coach", "buyer": "VP Product", "dealPotential": 5, "tier": 3, "status": "Monitor", "painPoint": "Smaller, growing but early", "whyCompelling": "Growing wearable player", "competitiveRisk": "Early stage", "recommendedEntry": "Monitor"}, {"company": "WHOOP", "segment": "Wellness/Wearables", "whatWeSell": "Total Brain, AI Coach", "buyer": "VP Product", "dealPotential": 6, "tier": 3, "status": "Monitor", "painPoint": "Natural pairing but smaller scale", "whyCompelling": "Health-focused wearable, engaged community", "competitiveRisk": "Smaller scale", "recommendedEntry": "Monitor"}, {"company": "Mid-size practices (6-15 clinicians)", "segment": "Small-Mid Practices", "whatWeSell": "Practice Management Platform, AI Scribe, Clinical Data/Analytics, Total Brain", "buyer": "Practice Owner/Manager", "dealPotential": 8, "tier": 2, "status": "Not contacted", "painPoint": "~10K practices in US need modern tools; $15-50K/year ACV", "whyCompelling": "High volume SaaS play. No BH-specific EHR has AI.", "competitiveRisk": "SaaS product launch readiness", "recommendedEntry": "Product launch readiness"}, {"company": "SimplePractice users", "segment": "Small-Mid Practices", "whatWeSell": "Practice Management, AI Scribe", "buyer": "Practice Owner", "dealPotential": 6, "tier": 3, "status": "Monitor", "painPoint": "200K+ users on legacy platform", "whyCompelling": "Integration/add-on play", "competitiveRisk": "Requires product readiness", "recommendedEntry": "Integration partnership"}, {"company": "TherapyNotes users", "segment": "Small-Mid Practices", "whatWeSell": "Practice Management, AI Scribe", "buyer": "Practice Owner", "dealPotential": 6, "tier": 3, "status": "Monitor", "painPoint": "Strong in group practices", "whyCompelling": "Integration partnership opportunity", "competitiveRisk": "Requires integration", "recommendedEntry": "Integration partnership"}, {"company": "Jane App users", "segment": "Small-Mid Practices", "whatWeSell": "Practice Management, AI Scribe", "buyer": "Practice Owner", "dealPotential": 5, "tier": 3, "status": "Monitor", "painPoint": "International SaaS", "whyCompelling": "International expansion opportunity", "competitiveRisk": "Requires localization", "recommendedEntry": "International expansion"}, {"company": "UK/Australia practices", "segment": "Small-Mid Practices", "whatWeSell": "Practice Management, AI Scribe, Clinical Workflow Tools", "buyer": "Practice Owner", "dealPotential": 6, "tier": 3, "status": "Monitor", "painPoint": "International market needs localization", "whyCompelling": "International SaaS opportunity", "competitiveRisk": "Localization investment required", "recommendedEntry": "International expansion strategy"}, {"company": "UnitedHealth Group (Optum BH)", "segment": "Health Plans/Payors", "whatWeSell": "AI Coach, AI Connect, Clinical Data/Analytics, Total Brain", "buyer": "VP BH Innovation, Optum Health leadership", "dealPotential": 8, "tier": 2, "status": "Not contacted", "painPoint": "Largest health insurer; Optum BH scale creates both opportunity and bureaucratic complexity", "whyCompelling": "Massive scale, existing digital health investments. Optum Behavioral Health is the largest managed BH entity.", "competitiveRisk": "Build vs buy tendency, bureaucratic complexity", "recommendedEntry": "Optum innovation team"}, {"company": "CareSource", "segment": "Health Plans/Payors", "whatWeSell": "AI Coach, AI Connect, Clinical Data/Analytics", "buyer": "VP BH or CMO", "dealPotential": 6, "tier": 3, "status": "Monitor", "painPoint": "Medicaid MCO with BH access gaps", "whyCompelling": "Medicaid focus aligns with AI triage value", "competitiveRisk": "Regional, Medicaid-focused", "recommendedEntry": "Monitor"}, {"company": "Oceans Healthcare", "segment": "Large Provider Groups", "whatWeSell": "AI Coach, AI Scribe, Clinical Workflow Tools", "buyer": "VP Clinical", "dealPotential": 5, "tier": 3, "status": "Monitor", "painPoint": "Behavioral health hospital system needs AI tools for productivity", "whyCompelling": "Growing BH hospital network", "competitiveRisk": "Smaller, niche", "recommendedEntry": "Monitor"}, {"company": "TheraNest / Ensora Health users", "segment": "Small-Mid Practices", "whatWeSell": "Practice Management, AI Scribe", "buyer": "Practice Owner", "dealPotential": 6, "tier": 3, "status": "Monitor", "painPoint": "Practice management users looking for AI upgrades", "whyCompelling": "Integration/migration opportunity", "competitiveRisk": "Requires product readiness", "recommendedEntry": "Integration partnership"}, {"company": "Zanda Health", "segment": "Small-Mid Practices", "whatWeSell": "Practice Management, AI Scribe", "buyer": "Practice Owner", "dealPotential": 5, "tier": 3, "status": "Monitor", "painPoint": "International practice management (formerly Power Diary)", "whyCompelling": "International expansion opportunity, Australian market", "competitiveRisk": "International localization needed", "recommendedEntry": "International strategy"}, {"company": "Valant", "segment": "Small-Mid Practices", "whatWeSell": "Practice Management, AI Scribe, Clinical Workflow Tools", "buyer": "Practice Owner/Administrator", "dealPotential": 6, "tier": 3, "status": "Monitor", "painPoint": "Mid-market BH EHR users wanting modern AI tools", "whyCompelling": "Mid-market BH EHR with integration opportunity", "competitiveRisk": "Established EHR loyalty", "recommendedEntry": "Integration or replacement strategy"}, {"company": "Benefitfocus", "segment": "Care Navigation", "whatWeSell": "AI Coach, Total Brain, Clinical Data/Analytics", "buyer": "VP Product", "dealPotential": 6, "tier": 3, "status": "Monitor", "painPoint": "Benefits administration platform needs BH content", "whyCompelling": "One integration = thousands of employer accounts", "competitiveRisk": "Platform integration complexity", "recommendedEntry": "Platform partnership approach"}, {"company": "Businessolver", "segment": "Care Navigation", "whatWeSell": "AI Coach, Total Brain", "buyer": "VP Product", "dealPotential": 6, "tier": 3, "status": "Monitor", "painPoint": "Benefits platform with AI assistant Sofia; needs clinical BH depth", "whyCompelling": "AI-forward culture, employer distribution", "competitiveRisk": "May build internally", "recommendedEntry": "Partnership approach"}, {"company": "Rightway", "segment": "Care Navigation", "whatWeSell": "AI Coach, AI Connect, Clinical Data/Analytics", "buyer": "VP Product or VP Clinical", "dealPotential": 6, "tier": 3, "status": "Monitor", "painPoint": "Care navigation startup needs BH depth", "whyCompelling": "Growing navigation player", "competitiveRisk": "Competitive market", "recommendedEntry": "Monitor"}, {"company": "Navia Benefit Solutions", "segment": "Care Navigation", "whatWeSell": "AI Coach, Total Brain", "buyer": "VP Product", "dealPotential": 5, "tier": 3, "status": "Monitor", "painPoint": "Benefits admin needs BH integration", "whyCompelling": "Distribution channel opportunity", "competitiveRisk": "Smaller player", "recommendedEntry": "Monitor"}, {"company": "Collective Health", "segment": "Care Navigation", "whatWeSell": "AI Coach, AI Connect, Clinical Data/Analytics", "buyer": "VP Product", "dealPotential": 6, "tier": 3, "status": "Monitor", "painPoint": "Health benefits platform for self-insured employers; BH is a gap", "whyCompelling": "Self-insured employer focus aligns with EAP replacement narrative", "competitiveRisk": "Building own navigation", "recommendedEntry": "Monitor"}, {"company": "University of Texas System", "segment": "University/Institutional", "whatWeSell": "AI Coach, Self-Care Tools, AI Connect, Clinical Data/Analytics", "buyer": "System leadership", "dealPotential": 7, "tier": 2, "status": "Not contacted", "painPoint": "Large state university system with BH demand across 13 institutions", "whyCompelling": "Scale across 230K+ students, state funding potential", "competitiveRisk": "Procurement complexity", "recommendedEntry": "State system approach"}, {"company": "University of California System (UC)", "segment": "University/Institutional", "whatWeSell": "AI Coach, Self-Care Tools, AI Connect, Clinical Data/Analytics", "buyer": "System leadership", "dealPotential": 7, "tier": 2, "status": "Not contacted", "painPoint": "10 campuses, 290K+ students; counseling center waitlists", "whyCompelling": "Well-funded system, innovation culture", "competitiveRisk": "Build vs buy tendency", "recommendedEntry": "UC system health leadership"}, {"company": "Google Health / DeepMind", "segment": "Data/AI Partners", "whatWeSell": "Guardrails/Evals, Proprietary Data, Clinical Data/Analytics", "buyer": "VP Health, DeepMind Health team", "dealPotential": 7, "tier": 2, "status": "Not contacted", "painPoint": "Health AI initiatives need BH clinical validation", "whyCompelling": "Massive AI investment, BH is a gap in their health strategy", "competitiveRisk": "Builds internally, complex organization", "recommendedEntry": "Research collaboration pitch"}, {"company": "Amazon (AWS Health)", "segment": "Data/AI Partners", "whatWeSell": "AI Scribe, Clinical Data/Analytics, Guardrails/Evals", "buyer": "AWS Health team, One Medical leadership", "dealPotential": 6, "tier": 3, "status": "Monitor", "painPoint": "One Medical acquisition needs BH depth; AWS Health AI needs clinical validation", "whyCompelling": "Massive distribution through AWS and One Medical", "competitiveRisk": "Complex organization, builds internally", "recommendedEntry": "Monitor"}, {"company": "Solo practitioners", "segment": "Small-Mid Practices", "whatWeSell": "AI Scribe, Practice Management", "buyer": "Individual clinician", "dealPotential": 4, "tier": 3, "status": "Monitor", "painPoint": "Solo therapists need affordable AI tools", "whyCompelling": "Massive volume (100K+ solo practitioners)", "competitiveRisk": "Low ACV, requires self-serve model", "recommendedEntry": "Product-led growth strategy"}, {"company": "Small group practices (2-5)", "segment": "Small-Mid Practices", "whatWeSell": "AI Scribe, Practice Management, Clinical Workflow Tools", "buyer": "Practice Owner", "dealPotential": 5, "tier": 3, "status": "Monitor", "painPoint": "Small groups need affordable modern tools", "whyCompelling": "Large addressable market", "competitiveRisk": "Price-sensitive, requires self-serve", "recommendedEntry": "Product-led growth"}], "competitors": [{"name": "Ease Health", "category": "AI-First Clinical Tools", "whatTheyDo": "AI-native CRM + EHR + RCM platform for behavioral health", "funding": "$41M Series A (a16z, Feb 2026)", "junoOverlap": "Practice Management, AI Scribe, Clinical Workflows, Billing/RCM -- nearly full overlap", "threatLevel": 10, "strengths": "AI-native from day one, a16z backing, clean-sheet design, BH-specific", "weaknesses": "Pre-revenue, unproven at scale, no provider network, no employer/B2B"}, {"name": "Spring Health", "category": "Direct Competitors", "whatTheyDo": "Employer BH platform with Precision Mental Healthcare AI matching; acquired Alma", "funding": "$100M Series E, $3.3B valuation, post-Alma $6-7B combined", "junoOverlap": "AI Coach, Practice Management (Alma), Provider Network, Employer distribution", "threatLevel": 9, "strengths": "Massive employer base, AI matching, vertical integration via Alma", "weaknesses": "Heavyweight enterprise sales cycle, Alma integration risk, not white-label"}, {"name": "Lyra Health", "category": "Direct Competitors", "whatTheyDo": "Employer BH benefits -- therapy, coaching, psychiatry, digital self-care; Lyra Empower AI", "funding": "$915M total, $235M Series F", "junoOverlap": "AI Coach (Lyra Empower), Self-Care Tools, Provider Network, Employer distribution", "threatLevel": 9, "strengths": "Revenue scale ($235M), clinical evidence (26% healthcare cost reduction), massive network", "weaknesses": "Heavy enterprise model, not modular/embeddable, not white-label"}, {"name": "Slingshot AI", "category": "Potential Partners to Competitors", "whatTheyDo": "AI therapy chatbot Ash -- foundation model for psychology, 150K+ users", "funding": "$93M total (a16z, Radical Ventures)", "junoOverlap": "AI Coach -- direct competition on conversational AI", "threatLevel": 8, "strengths": "Largest BH training dataset, strong outcomes (76% depression improvement), a16z backing", "weaknesses": "Safety concerns, consumer-only (no B2B yet), no provider tools"}, {"name": "Eleos Health", "category": "AI-First Clinical Tools", "whatTheyDo": "AI-powered clinical documentation, compliance, real-time intelligence for BH", "funding": "$60M Series C, $120M+ total", "junoOverlap": "AI Scribe, Clinical Workflows, Outcomes tracking, Compliance", "threatLevel": 8, "strengths": "Strong outcomes data (2x engagement), EHR-agnostic overlay, BH-specific, 40K clinicians", "weaknesses": "Overlay model, no employer B2B, no AI coaching"}, {"name": "Talkspace", "category": "Adjacent Players", "whatTheyDo": "Virtual therapy/psychiatry platform; building proprietary mental health LLM", "funding": "Public (TALK), $187.6M revenue (2024)", "junoOverlap": "AI Coach (upcoming AI agent), Provider Network, Therapy delivery", "threatLevel": 7, "strengths": "Public company scale, strong revenue growth, proprietary LLM (50% better risk identification)", "weaknesses": "B2C heavy, past controversies, not white-label"}, {"name": "Sword Health", "category": "Direct Competitors", "whatTheyDo": "AI MSK care expanding to mental health via Mind; $374M revenue, $4B valuation", "funding": "$450M raised, $4B valuation", "junoOverlap": "AI Coach (Mind), Employer distribution, Outcomes tracking", "threatLevel": 7, "strengths": "Massive employer distribution, evidence machine, channel partnerships, outcome-based pricing", "weaknesses": "Mental health is new/unproven, no therapy marketplace, MSK DNA"}, {"name": "Headspace", "category": "Direct Competitors", "whatTheyDo": "Combined meditation + AI coaching + therapy + psychiatry for employers", "funding": "$3B valuation at merger", "junoOverlap": "AI Coach, Self-Care Tools, Coaching, Employer distribution", "threatLevel": 7, "strengths": "Massive consumer brand, employer distribution, UnitedHealthcare partnership", "weaknesses": "Clinical depth is secondary, therapy is add-on not core, not white-label"}, {"name": "Ritten", "category": "AI-First Clinical Tools", "whatTheyDo": "Unified BH practice management -- EHR + CRM + RCM for SUD and mental health", "funding": "$35M Series B (Dec 2025)", "junoOverlap": "Practice Management, Billing/RCM, Clinical Workflows", "threatLevel": 7, "strengths": "SUD + mental health unified, strong VC backing, growing fast", "weaknesses": "SUD-heavy, no AI coaching, no employer B2B"}, {"name": "Heidi Health", "category": "Potential Partners to Competitors", "whatTheyDo": "AI care partner for clinicians -- docs, pre-chart, guidelines; Australian-founded, global", "funding": "$65M Series B, $465M valuation", "junoOverlap": "AI Scribe, Clinical Workflows", "threatLevel": 6, "strengths": "Global scale, 2M+ clinician consults/week, aggressive expansion", "weaknesses": "Not BH-specific, no coaching/therapy"}, {"name": "Modern Health", "category": "Direct Competitors", "whatTheyDo": "Employer mental health -- therapy, coaching, holistic well-being", "funding": "$192M total, $1.17B valuation", "junoOverlap": "AI Coach, Self-Care Tools, Coaching, Employer distribution", "threatLevel": 6, "strengths": "Holistic well-being scope, strong VC backing", "weaknesses": "CEO transition, unclear AI strategy, not white-label"}, {"name": "Calm Health", "category": "Direct Competitors", "whatTheyDo": "Evidence-based mental health for health plans, employers; in-app screening", "funding": "Well-funded (IPO speculation)", "junoOverlap": "Self-Care Tools, AI screening/triage, Employer distribution", "threatLevel": 6, "strengths": "Massive consumer brand, 77% screening completion, global expansion", "weaknesses": "Wellness-first not clinical, limited therapy/psychiatry"}, {"name": "Wysa", "category": "Potential Partners to Competitors", "whatTheyDo": "AI mental health chatbot with CBT; FDA Breakthrough Device designation", "funding": "$30.5M + $3.4M NIH grant", "junoOverlap": "AI Coach, Self-Care Tools, Employer distribution", "threatLevel": 6, "strengths": "FDA designation, 30+ peer-reviewed studies, B2B model established", "weaknesses": "Small funding, chatbot-only, limited provider tools"}, {"name": "Abridge", "category": "Potential Partners to Competitors", "whatTheyDo": "Ambient AI clinical documentation in 150+ health systems", "funding": "$800M+ total, $5.3B valuation", "junoOverlap": "AI Scribe -- direct threat if they specialize in BH", "threatLevel": 5, "strengths": "Market leader in ambient AI, massive funding, health system relationships", "weaknesses": "General healthcare, no coaching/therapy, enterprise only"}, {"name": "Ambience Healthcare", "category": "Potential Partners to Competitors", "whatTheyDo": "AI-native clinical documentation, coding, CDI for health systems", "funding": "$345M+ total, $1.25B valuation", "junoOverlap": "AI Scribe, Clinical documentation integrity", "threatLevel": 5, "strengths": "AI-native, unicorn, a16z + OpenAI backing", "weaknesses": "General healthcare, not BH-specific"}, {"name": "Talkiatry", "category": "Adjacent Players", "whatTheyDo": "Digital psychiatry, 600+ psychiatrists, heavy AI investment", "funding": "$210M Series D (Feb 2026)", "junoOverlap": "AI Scribe, Psychiatry Access", "threatLevel": 5, "strengths": "Largest digital psychiatry, 80% clinician burnout reduction through AI", "weaknesses": "Psychiatry-only, not B2B/employer, not white-label"}, {"name": "BetterHelp", "category": "Adjacent Players", "whatTheyDo": "Largest online therapy platform, pivoting to insurance-based", "funding": "Owned by Teladoc (TDOC)", "junoOverlap": "Provider Network, Therapy delivery", "threatLevel": 4, "strengths": "Massive provider base, consumer awareness, Teladoc resources", "weaknesses": "Brand challenges, insurance pivot risky, no AI products"}, {"name": "Noom", "category": "Adjacent Players", "whatTheyDo": "Behavioral science health coaching, expanding to mental health via Noom Mood", "funding": "$540M+, acquired Wisdom AI", "junoOverlap": "AI Coach, Self-Care Tools, Employer wellness", "threatLevel": 4, "strengths": "Behavioral science expertise, AI-human coaching, consumer brand", "weaknesses": "Mental health secondary, no clinical depth, no therapy marketplace"}, {"name": "b.well Connected Health", "category": "Infrastructure", "whatTheyDo": "Health data infrastructure, white-label AI assistant Bailey, Health AI SDK", "funding": "$96M", "junoOverlap": "AI Coach (Bailey), White-label, Health data aggregation", "threatLevel": 4, "strengths": "Data aggregation, OpenAI partnership, SDK model", "weaknesses": "No care delivery, no provider network, no mental health specialization"}, {"name": "Healthie", "category": "Infrastructure", "whatTheyDo": "API-first EHR and practice management infrastructure for virtual-first care", "funding": "$23M Series B (TCV)", "junoOverlap": "Practice Management (API-first), White-label", "threatLevel": 4, "strengths": "API-first, developer-friendly, 25K+ clinicians, 10M+ patients", "weaknesses": "Not BH-specific, no AI coaching, no clinical content"}, {"name": "NeuroFlow", "category": "Infrastructure", "whatTheyDo": "Behavioral health data analytics and intelligence (BHIQ) for payors and health systems", "funding": "Not disclosed", "junoOverlap": "Clinical Data/Analytics, Care navigation, BH intelligence for payors", "threatLevel": 5, "strengths": "Analytics depth, payor relationships, government contracts", "weaknesses": "Analytics-only, no care delivery, no AI coaching"}, {"name": "Upheal", "category": "AI-First Clinical Tools", "whatTheyDo": "AI-powered EHR for mental health -- transcription, automated notes, analytics", "funding": "$14.35M total", "junoOverlap": "AI Scribe, Practice Management", "threatLevel": 3, "strengths": "Purpose-built for therapy, affordable", "weaknesses": "Small scale, no employer B2B, limited scope"}, {"name": "Blueprint", "category": "AI-First Clinical Tools", "whatTheyDo": "AI assistant for therapists -- notes, treatment plans, outcomes (BQI index)", "funding": "$9M Series A", "junoOverlap": "AI Scribe, Clinical Workflows, Outcomes tracking", "threatLevel": 3, "strengths": "National outcomes benchmark, 50K+ clinicians", "weaknesses": "Small funding, narrow scope"}, {"name": "Mentalyc", "category": "AI-First Clinical Tools", "whatTheyDo": "AI therapy notes -- SOAP/DAP templates, 30K+ clinicians", "funding": "Not disclosed", "junoOverlap": "AI Scribe", "threatLevel": 2, "strengths": "Large clinician adoption, affordable", "weaknesses": "Notes-only, narrow scope"}, {"name": "Osmind", "category": "AI-First Clinical Tools", "whatTheyDo": "EHR for innovative mental health treatments -- psychedelics, TMS, ketamine", "funding": "$40M Series B", "junoOverlap": "Practice Management, Clinical Workflows", "threatLevel": 2, "strengths": "Niche leadership, strong VC backing", "weaknesses": "Very narrow niche"}], "products": [{"name": "AI Coach (Sonder/Lontra)", "category": "Consumer Tech", "description": "Clinically grounded conversational AI with voice and text, memory and personalization", "keySellingPoint": "Built on proprietary clinical data, clinically guardrailed, white-label ready"}, {"name": "AI Connect", "category": "Consumer Tech", "description": "Agentic intake, matching, and scheduling with agent-to-agent handoffs", "keySellingPoint": "Zero-engineering-lift integration -- users assessed, triaged, and routed without leaving the partner's app"}, {"name": "Self-Care Tools", "category": "Consumer Tech", "description": "Guided mindfulness, CBT modules, goal tracking, brain training, daily reflections, resource library", "keySellingPoint": "100+ digital tools, low-friction engagement layer, modular (pick and choose)"}, {"name": "Total Brain Assessments", "category": "Consumer Tech", "description": "Cognitive and emotional resilience assessments (stress, emotional awareness, attentional control)", "keySellingPoint": "Assess-train-reassess personalized model with pre/post improvement signals"}, {"name": "AI Scribe", "category": "Provider Tech", "description": "Clinical notes automation (session notes, treatment plans, summaries)", "keySellingPoint": "~40% of SonderMind session volume, licensable to external provider groups"}, {"name": "Practice Management Platform", "category": "Provider Tech", "description": "Session scheduling, hosted video, claim submission, billing, invoicing, superbill reimbursement", "keySellingPoint": "Full EHR alternative for behavioral health providers, battle-tested at scale"}, {"name": "Clinical Workflow Tools", "category": "Provider Tech", "description": "Session preparation, goal setting, treatment planning, client progress dashboards, outcomes tracking", "keySellingPoint": "AI-powered productivity across the full therapy workflow"}, {"name": "Guardrails and Evals", "category": "Provider Tech", "description": "AI Constitution, real-time guardrails, eval suites, continuous clinician oversight", "keySellingPoint": "The safety and trust story that clinical buyers need -- nobody else has this"}, {"name": "Therapy Network Access", "category": "Network & Access", "description": "Direct routing into SonderMind's 16K+ provider network, insurance-covered", "keySellingPoint": "The escalation pathway nobody else has -- real therapists, real insurance"}, {"name": "Psychiatry Access", "category": "Network & Access", "description": "Medication management through the same ecosystem", "keySellingPoint": "Completes the care continuum"}, {"name": "Care Coordination", "category": "Network & Access", "description": "White-glove support for complex cases, closed-loop reporting", "keySellingPoint": "Critical for high-acuity populations"}, {"name": "RCM and Credentialing", "category": "Network & Access", "description": "Revenue cycle management, insurance credentialing, claims processing", "keySellingPoint": "Already built -- partners do not need to build billing infrastructure"}, {"name": "Clinical Data and Analytics", "category": "Data & Intelligence", "description": "Outcome measurement (PHQ-9, GAD-7), utilization data, population health insights", "keySellingPoint": "Proof that it works -- the currency of enterprise healthcare"}, {"name": "Proprietary Data Assets", "category": "Data & Intelligence", "description": "Longitudinal therapy session data, provider feedback loops, clinical outcomes data", "keySellingPoint": "The scarcest asset in behavioral health AI -- no one else has this at scale"}], "pipeline": [{"company": "Sober Sidekick", "stage": "Crawl (Pilot)", "config": "AI Connect + AI Coach + Therapy Network", "nextStep": "Finalize KPIs, SLAs, pricing", "owner": "Val/Team", "targetDate": "7/1/2026", "notes": "1M+ downloads, 145K MAU, 48% relapse reduction, 93% prediction accuracy"}, {"company": "Lockton", "stage": "Early Qualification", "config": "Total Brain + AI Coach + Therapy Network + Analytics", "nextStep": "Meeting with full wellness buying team early April", "owner": "Rachel/Val", "targetDate": "April 2026", "notes": "Inbound interest, $0.80 PEPM for 13K-employee client, Cognitive Health framing resonated"}, {"company": "LifeStance Health", "stage": "Early Qualification", "config": "AI Scribe + AI Coach + Provider-in-the-Loop + Guardrails/Evals", "nextStep": "Exec alignment target mid-March", "owner": "Val/Team", "targetDate": "March 2026", "notes": "Custom deck prepared, interest in therapist tools + AI coaching"}, {"company": "Flo Health", "stage": "Paused", "config": "Mood screening + AI Coach + Therapy escalation + Psychiatry", "nextStep": "Reactivate when Lontra demos and AI Connect ready", "owner": "Val", "targetDate": "TBD", "notes": "Last contact late 2025"}, {"company": "JAAQ", "stage": "Warm (inbound)", "config": "TBD -- potential sell-into or learn-from", "nextStep": "Discovery call", "owner": "Mark/Val", "targetDate": "TBD", "notes": "UK-based mental health content platform, Mark's YPO connection"}], "pitchFrameworks": [{"segment": "Benefits Consultants/Brokers", "leadWith": "Channel economics: one partnership = hundreds of employer clients. Curated BH solution stack vs evaluating 50 point solutions.", "positioning": "Juno is the recommended behavioral health stack for your employer clients -- AI-powered screening, coaching, therapy, and outcomes in one modular platform.", "keyObjections": "Why not recommend Spring Health or Lyra? / Our clients already have EAPs / How do you prove ROI?", "buyerPersona": "National Practice Leader, Health & Benefits Consulting Leader. Analytics-driven, risk-averse, values thought leadership and data.", "quickPitch": "Your 2026 employer survey shows 35% adding onsite counseling -- but most do not need a counselor onsite, they need a clinical-grade digital BH stack. We built it. One partnership with Juno gives your clients AI screening, coaching, therapy access, and outcomes data in a single integration."}, {"segment": "Women's Health", "leadWith": "BH comorbidity data: 60-70% of menopause patients, high rates in PCOS and fertility. No women's health company has solved this.", "positioning": "White-label behavioral health layer purpose-built for the women's health journey -- perinatal, fertility, menopause. Embeddable, clinically grounded, outcomes-tracked.", "keyObjections": "We already offer some mental health / Our users do not want therapy / We want to build this ourselves", "buyerPersona": "VP Clinical, CMO, VP Product. Clinically credible, data-oriented, looking for scalable solutions that do not require hiring clinicians.", "quickPitch": "Your patients report anxiety, depression, and mood symptoms at 3x the general population rate, but your clinical model stops at prescribing. Our AI Coach provides between-visit behavioral support, Total Brain screens for emotional resilience, and when someone needs a therapist, we route them to one of 16K insurance-covered providers."}, {"segment": "DTC Telehealth", "leadWith": "Mental health subscribers churn because a prescription without support is not enough. AI Coach adds continuous engagement.", "positioning": "The clinical behavioral health layer DTC platforms lack -- AI coaching, clinical escalation, outcomes tracking. Embeddable, white-label, modular.", "keyObjections": "We want to build our own AI / Mental health is not our core focus / What is your evidence?", "buyerPersona": "VP Mental Health Product, CMO, VP Product. Growth-oriented, data-driven, looking for speed to market and engagement metrics.", "quickPitch": "You have millions of subscribers and mental health is your stated growth priority. But a prescription without between-visit support means subscriber churn. Our AI Coach provides clinically grounded conversational support, our AI Scribe saves your providers 15-20 minutes per session, and we have 16K therapists for clinical escalation. Integration takes 2-4 weeks."}, {"segment": "Health Plans/Payors", "leadWith": "Regulatory mandates (CMS 10-day access, network adequacy), margin pressure from BH utilization. AI triage + provider network solves both.", "positioning": "The behavioral health routing and triage layer that sits on top of your existing network and actually gets members into care. AI-powered, insurance-aligned, outcomes-tracked.", "keyObjections": "We already have Carelon/Beacon / HIPAA concerns / How does this work with our existing network?", "buyerPersona": "VP Behavioral Health, CMO, VP Innovation. Regulatory-aware, cost-focused, needs solutions that demonstrate compliance and margin improvement.", "quickPitch": "OIG found most MCOs have less than 50% of county BH workforce in-network. CMS requires 10-day appointment access. Our AI Connect routes members to matched providers from our 16K network as overflow capacity, while our AI Coach handles low-acuity volume at scale. Direct margin relief plus compliance."}, {"segment": "Chronic Disease", "leadWith": "Depression doubles diabetes costs. Emotional eating is the #1 dropout driver. BH comorbidity is proven but no chronic disease company has clinical BH depth.", "positioning": "Clinical-grade behavioral health integrated into your chronic disease management -- not coaching-light, but clinically grounded AI with escalation to therapy.", "keyObjections": "Our coaching handles mental health / Adding BH adds complexity / What evidence do you have?", "buyerPersona": "CMO, VP Product, VP Clinical Operations. Outcomes-obsessed, needs to show integrated results to employers and payors.", "quickPitch": "30% of your diabetes patients have comorbid depression, and they are twice as expensive. Your coaching handles motivation but not clinical anxiety or depression. Our AI Coach provides clinically grounded support, Total Brain predicts which patients will struggle, and when someone needs a therapist, we route them into care. Outcomes-based pricing means we only get paid when it works."}, {"segment": "MSK/Chronic Pain", "leadWith": "Pain catastrophizing is the #1 predictor of poor MSK outcomes. 40-60% comorbid depression. Sword just launched Mind -- your response?", "positioning": "The behavioral health answer to your MSK outcomes gap. Chronic pain anxiety, depression, and catastrophizing interventions that integrate with your PT workflow.", "keyObjections": "Sword Mind covers this / We want to build internally / Our members do not want mental health", "buyerPersona": "Chief Clinical Officer, VP Product. Evidence-driven, competitive, needs to show differentiated outcomes vs Sword.", "quickPitch": "Sword just launched Mind. Your employers are going to ask what your mental health answer is. Pain catastrophizing predicts poor MSK outcomes better than imaging or physical exam. Our AI Coach provides chronic pain-specific anxiety and depression support, and integrated MSK + mental health outcomes data gives your employer story a dimension Sword is still building."}, {"segment": "Data/AI Partners", "leadWith": "BH is the highest-liability domain in consumer health AI. Your models need clinical validation data and safety guardrails you cannot build.", "positioning": "The clinical behavioral health data and guardrails partner for AI companies -- longitudinal therapy outcomes, eval datasets, AI Constitution framework.", "keyObjections": "We can build our own safety framework / We already have health data / Why SonderMind specifically?", "buyerPersona": "VP Health, Head of Safety, Head of Partnerships. Safety-conscious, data-oriented, looking for defensible clinical partnerships.", "quickPitch": "Your health AI users are asking about mental health. BH is your biggest safety risk and biggest data gap. SonderMind has the most valuable longitudinal therapy dataset in the industry -- millions of sessions, validated outcomes, provider feedback loops. Plus an AI Constitution and guardrails framework tested at scale. No one else has this combination."}, {"segment": "Addiction/Recovery", "leadWith": "75% comorbidity. Relapse happens between appointments when patients are alone. 24/7 AI support at the moment of greatest risk.", "positioning": "The between-visit behavioral health layer for addiction treatment -- clinically grounded AI coaching, trigger management, and clinical escalation when needed.", "keyObjections": "Our patients are too complex for AI / We already have peer support / HIPAA concerns", "buyerPersona": "CMO, VP Product, VP Clinical Operations. Clinically conservative, needs safety story, looking for retention improvements.", "quickPitch": "Relapse happens between appointments when your patients are alone with their triggers. Our AI Coach provides 24/7 clinically grounded support at the moment of greatest risk. Clinical data on engagement patterns predicts relapse risk before it happens. And when someone needs clinical escalation, we route them to one of 16K insurance-covered therapists. Integration in 2-4 weeks."}, {"segment": "Care Navigation", "leadWith": "Navigation stops at referral. You find the need but cannot close the loop to care and outcomes. We complete the journey.", "positioning": "The behavioral health care delivery layer that sits behind your navigation -- AI coaching, therapy network, and closed-loop outcomes so you can prove your members actually got better.", "keyObjections": "We already have BH referral pathways / Adding care delivery is not our model / How does this work with our existing partners?", "buyerPersona": "Chief Product Officer, VP Clinical Programs. Growth-oriented, outcomes-focused, looking for differentiation vs Accolade/Included Health.", "quickPitch": "Your navigation finds the behavioral health need but the journey ends at referral. Members wait weeks for a therapist and you never see outcomes. Our AI Coach provides immediate support while members wait. AI Connect matches them to a therapist from our 16K network. And we close the loop with outcomes data you can show employers. That is the missing piece of your IPO story."}, {"segment": "University/Institutional", "leadWith": "State-funded mandates, counseling center overflow, 12-month waitlists. The full assess-coach-escalate-measure loop no competitor has.", "positioning": "The scalable behavioral health solution for higher education -- AI screening, coaching, therapy escalation, and outcomes tracking with the full clinical loop.", "keyObjections": "Our students need in-person care / Budget constraints / Privacy concerns with AI", "buyerPersona": "Chancellor's office, VP Student Affairs, Counseling Center Director. Budget-conscious, mandate-driven, needs to show legislators outcomes.", "quickPitch": "Your counseling center has a 12-month waitlist and the legislature is demanding outcomes data. Our AI Coach provides immediate support for students who cannot wait. Total Brain screens 460K students in days, not semesters. When someone needs a therapist, we route them to insurance-covered care. And we give you the population-level outcomes dashboard the state requires. All funded through existing BH mandates."}, {"segment": "Large Provider Groups", "leadWith": "AI Scribe is the wedge -- 15-20 minutes saved per session. Guardrails/evals and clinical workflows are the expansion.", "positioning": "The AI productivity platform built for behavioral health providers -- notes automation, clinical workflows, outcomes tracking, and patient engagement tools.", "keyObjections": "We are building our own AI / HIPAA / We already have an EHR / Provider resistance to AI", "buyerPersona": "Chief Clinical Officer, VP Innovation, VP Clinical Operations. Productivity-focused, needs clinician adoption, looking for retention improvements.", "quickPitch": "Your clinicians spend 30% of their time on documentation. Our AI Scribe, already processing 40% of SonderMind's session volume, saves 15-20 minutes per visit. But the real value is the full workflow: session prep, treatment planning, outcomes tracking, and an AI Coach that keeps patients engaged between sessions. All with the guardrails framework and AI Constitution that your compliance team needs."}, {"segment": "Wellness/Wearables", "leadWith": "Detect and intervene is 10x more valuable than detect and display. Your stress metrics need clinical validation.", "positioning": "The clinical behavioral health validation and intervention layer for wellness platforms -- turning device signals into clinical action.", "keyObjections": "We are a wellness company, not clinical / Our users do not want therapy / We can build this ourselves", "buyerPersona": "VP Health, Head of Clinical Partnerships, VP Product. Innovation-oriented, looking for clinical credibility for IPO or enterprise sales.", "quickPitch": "Your device detects stress, sleep disruption, and cognitive load. But then what? Total Brain clinically validates your metrics. Our AI Coach intervenes when stress signals cross clinical thresholds. And when someone needs a therapist, we route them to one of 16K insurance-covered providers. You go from tracker to health system. That is the story your pre-IPO investors want to hear."}, {"segment": "Small-Mid Practices", "leadWith": "No BH-specific EHR has AI. We own the mid-market with practice management + AI Scribe + clinical workflows.", "positioning": "The modern behavioral health practice platform -- scheduling, billing, notes automation, outcomes tracking, and clinical AI tools in one integrated system.", "keyObjections": "I already have SimplePractice/TherapyNotes / What about my existing billing / Too expensive for a small practice", "buyerPersona": "Practice Owner/Manager. Cost-conscious, time-poor, needs tools that save time and increase revenue per clinician.", "quickPitch": "Your current EHR was built a decade ago and has zero AI. Our platform gives you AI-powered notes that save 15-20 minutes per session, automated billing, treatment planning tools, and outcomes dashboards that justify higher reimbursement. Purpose-built for behavioral health. $15-50K/year for your practice."}, {"segment": "Employers", "leadWith": "BH is the fastest-growing cost category. EAP utilization is 3-5%. We deliver AI-powered screening, coaching, therapy, and outcomes in one seamless experience.", "positioning": "The full behavioral health stack -- screening, coaching, therapy, psychiatry, outcomes -- replacing broken EAPs with an integrated, AI-powered experience.", "keyObjections": "We already have Spring Health/Lyra / EAP utilization was low / How do you prove ROI?", "buyerPersona": "VP Employee Benefits, CHRO, Head of Total Rewards. Cost-focused, needs utilization data, wants to consolidate vendors.", "quickPitch": "Your EAP gets 3-5% utilization because the experience is terrible. We embed directly into the workflow your employees already use. AI screens and triages in real time. Our AI Coach provides immediate support. And when someone needs a therapist, we match them to one of 16K insurance-covered providers with real-time scheduling. App users show 30% more sessions than web-only. That is the difference between a benefit on paper and a benefit that works."}]};
+
+// ---- Utilities ----
+const segmentColors = {
+  "Women's Health":"#e85d8a","Chronic Disease":"#f59e0b","MSK/Chronic Pain":"#ef4444",
+  "Addiction/Recovery":"#8b5cf6","DTC Telehealth":"#3b82f6","Employers":"#14b8a6",
+  "Benefits Consultants/Brokers":"#22c55e","Health Plans/Payors":"#6366f1",
+  "Care Navigation":"#f97316","Large Provider Groups":"#06b6d4","University/Institutional":"#a855f7",
+  "Data/AI Partners":"#eab308","Wellness/Wearables":"#ec4899","Small-Mid Practices":"#64748b"
+};
+function getSegmentColor(s){return segmentColors[s]||'#4a9eff'}
+function tierBadge(t){return `<span class="badge badge-t${t}">Tier ${t}</span>`}
+function statusBadge(s){
+  if(s.includes('Pilot')||s.includes('qualification'))return `<span class="badge badge-active">${s}</span>`;
+  if(s==='Not contacted')return `<span class="badge badge-prospect">${s}</span>`;
+  if(s==='Monitor'||s==='Paused')return `<span class="badge badge-paused">${s}</span>`;
+  return `<span class="badge badge-t3">${s}</span>`;
+}
+function scoreDots(n,max=10){
+  let h='';for(let i=1;i<=max;i++) h+=`<span class="score-dot ${i<=n?(n>=8?'high':'filled'):''}"></span>`;
+  return `<div class="score-dots">${h}</div>`;
+}
+function threatBars(n,max=10){
+  let h='';for(let i=1;i<=max;i++){
+    let cls=i<=n?(n>=8?'filled-high':n>=5?'filled-med':'filled-low'):'';
+    h+=`<span class="threat-bar ${cls}"></span>`;
+  }return `<div class="threat-meter">${h}</div>`;
+}
+
+// ---- State ----
+let currentView = 'dashboard';
+let sortCol = 'dealPotential';
+let sortDir = -1;
+let filters = {search:'',segment:'',tier:'',minScore:0,product:''};
+let selectedProduct = null;
+let expandedRow = null;
+
+// ---- Computed ----
+function getSegments(){return [...new Set(DATA.companies.map(c=>c.segment))]}
+function getByTier(t){return DATA.companies.filter(c=>c.tier===t)}
+function getBySegment(s){return DATA.companies.filter(c=>c.segment===s)}
+function filteredCompanies(){
+  return DATA.companies.filter(c=>{
+    if(filters.search && !c.company.toLowerCase().includes(filters.search.toLowerCase())) return false;
+    if(filters.segment && c.segment!==filters.segment) return false;
+    if(filters.tier && c.tier!==parseInt(filters.tier)) return false;
+    if(filters.minScore && c.dealPotential < filters.minScore) return false;
+    if(filters.product && !c.whatWeSell.toLowerCase().includes(filters.product.toLowerCase())) return false;
+    return true;
+  }).sort((a,b)=>{
+    let av=a[sortCol],bv=b[sortCol];
+    if(typeof av==='string') return sortDir * av.localeCompare(bv);
+    return sortDir * (av-bv);
+  });
+}
+function getProductSegmentMatrix(){
+  const segs=getSegments();const prods=DATA.products;
+  const matrix=[];
+  prods.forEach(p=>{
+    const row={product:p.name,category:p.category};
+    segs.forEach(s=>{
+      const count=DATA.companies.filter(c=>c.segment===s && c.whatWeSell.includes(p.name.split(' (')[0].split(' and ')[0])).length;
+      row[s]=count;
+    });
+    matrix.push(row);
+  });
+  return matrix;
+}
+
+// ---- Render Functions ----
+function renderDashboard(){
+  const total=DATA.companies.length;
+  const t1=getByTier(1).length,t2=getByTier(2).length,t3=getByTier(3).length;
+  const segments=getSegments();
+  const top10=DATA.companies.filter(c=>c.tier===1).sort((a,b)=>b.dealPotential-a.dealPotential).slice(0,10);
+  const activePipeline=DATA.pipeline.filter(p=>p.stage.includes('Pilot')||p.stage.includes('Qualification'));
+  const warm=DATA.pipeline.filter(p=>p.stage.includes('Warm')||p.stage.includes('Paused'));
+
+  let html=`
+  <div class="grid-4" style="margin-bottom:24px">
+    <div class="stat-card"><div class="stat-label">Total Companies Mapped</div><div class="stat-value">${total}</div><div class="stat-sub">Across ${segments.length} segments</div></div>
+    <div class="stat-card"><div class="stat-label">Tier 1 Targets</div><div class="stat-value" style="color:var(--accent-blue)">${t1}</div><div class="stat-sub">Pursue now -- highest priority</div></div>
+    <div class="stat-card"><div class="stat-label">Tier 2 Targets</div><div class="stat-value" style="color:var(--accent-purple)">${t2}</div><div class="stat-sub">Pursue this quarter</div></div>
+    <div class="stat-card"><div class="stat-label">Active Pipeline</div><div class="stat-value" style="color:var(--accent-green)">${activePipeline.length}</div><div class="stat-sub">${warm.length} warm/paused</div></div>
+  </div>
+
+  <div class="section-header"><div class="section-title">Top 10 Tier 1 Targets</div><div class="section-subtitle">Ranked by deal potential score</div></div>
+  <div class="grid-2" style="margin-bottom:32px">
+    ${top10.map((c,i)=>`
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px">#${i+1} | ${c.segment}</div>
+          <div class="card-title">${c.company}</div>
+        </div>
+        <div style="text-align:right">
+          ${tierBadge(c.tier)}
+          <div style="font-size:24px;font-weight:700;color:var(--accent-blue);margin-top:4px">${c.dealPotential}/10</div>
+        </div>
+      </div>
+      <div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px">${c.whatWeSell}</div>
+      <div class="score-bar"><span style="font-size:11px;color:var(--text-muted)">Score</span>${scoreDots(c.dealPotential)}</div>
+      <div style="font-size:12px;color:var(--text-muted);margin-top:8px">Buyer: ${c.buyer}</div>
+    </div>`).join('')}
+  </div>
+
+  <div class="section-header"><div class="section-title">Segment Opportunity Heatmap</div><div class="section-subtitle">Click a segment to filter the Market Map</div></div>
+  <div class="heatmap-grid" style="margin-bottom:32px">
+    ${segments.map(s=>{
+      const cos=getBySegment(s);
+      const t1c=cos.filter(c=>c.tier===1).length;
+      const avg=(cos.reduce((a,c)=>a+c.dealPotential,0)/cos.length).toFixed(1);
+      const intensity=Math.min(1,cos.length/15);
+      const col=getSegmentColor(s);
+      return `<div class="heatmap-cell" style="background:${col}${Math.round(intensity*40+15).toString(16)};border:1px solid ${col}40" onclick="navigateToSegment('${s}')">
+        <div class="cell-count" style="color:${col}">${cos.length}</div>
+        <div class="cell-label" style="color:var(--text-primary)">${s}</div>
+        <div style="font-size:10px;color:var(--text-muted);margin-top:4px">${t1c} Tier 1 | Avg ${avg}</div>
+      </div>`;
+    }).join('')}
+  </div>
+
+  <div class="section-header"><div class="section-title">Pipeline Summary</div></div>
+  <div class="grid-3">
+    ${DATA.pipeline.map(p=>`
+    <div class="card">
+      <div class="card-header"><div class="card-title">${p.company}</div>${statusBadge(p.stage)}</div>
+      <div class="pipeline-config">${p.config}</div>
+      <div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px">${p.nextStep}</div>
+      <div class="pipeline-meta">
+        <span>Owner: ${p.owner}</span>
+        <span>Target: ${p.targetDate}</span>
+      </div>
+    </div>`).join('')}
+  </div>`;
+  return html;
+}
+
+function renderMarketMap(){
+  const segs=getSegments();
+  const products=[...new Set(DATA.products.map(p=>p.name.split(' (')[0]))];
+  const fc=filteredCompanies();
+  let html=`
+  <div class="table-container">
+    <div class="table-controls">
+      <input class="search-input" type="text" placeholder="Search company name..." value="${filters.search}" oninput="filters.search=this.value;renderView()">
+      <select class="filter-select" onchange="filters.segment=this.value;renderView()">
+        <option value="">All Segments</option>
+        ${segs.map(s=>`<option value="${s}" ${filters.segment===s?'selected':''}>${s}</option>`).join('')}
+      </select>
+      <select class="filter-select" onchange="filters.tier=this.value;renderView()">
+        <option value="">All Tiers</option>
+        <option value="1" ${filters.tier==='1'?'selected':''}>Tier 1</option>
+        <option value="2" ${filters.tier==='2'?'selected':''}>Tier 2</option>
+        <option value="3" ${filters.tier==='3'?'selected':''}>Tier 3</option>
+      </select>
+      <div class="range-group">
+        <span>Min Score: ${filters.minScore||0}</span>
+        <input type="range" min="0" max="10" value="${filters.minScore||0}" oninput="filters.minScore=parseInt(this.value);renderView()">
+      </div>
+      <select class="filter-select" onchange="filters.product=this.value;renderView()">
+        <option value="">All Products</option>
+        ${products.map(p=>`<option value="${p}" ${filters.product===p?'selected':''}>${p}</option>`).join('')}
+      </select>
+    </div>
+    <div style="overflow-x:auto">
+    <table>
+      <thead><tr>
+        ${['company','segment','whatWeSell','buyer','dealPotential','tier','status'].map(col=>{
+          const label={company:'Company',segment:'Segment',whatWeSell:'What We Sell',buyer:'Buyer',dealPotential:'Score',tier:'Tier',status:'Status'}[col];
+          const sorted=sortCol===col;
+          const arrow=sorted?(sortDir===1?'&#9650;':'&#9660;'):'&#9650;';
+          return `<th class="${sorted?'sorted':''}" onclick="toggleSort('${col}')">${label} <span class="sort-icon">${arrow}</span></th>`;
+        }).join('')}
+      </tr></thead>
+      <tbody>
+        ${fc.map((c,i)=>`
+        <tr class="expandable" onclick="toggleExpand(${i})">
+          <td style="font-weight:500">${c.company}</td>
+          <td><span style="color:${getSegmentColor(c.segment)}">${c.segment}</span></td>
+          <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.whatWeSell}</td>
+          <td style="font-size:12px">${c.buyer}</td>
+          <td>${scoreDots(c.dealPotential)} <span style="font-size:11px;color:var(--text-muted);margin-left:4px">${c.dealPotential}/10</span></td>
+          <td>${tierBadge(c.tier)}</td>
+          <td>${statusBadge(c.status)}</td>
+        </tr>
+        <tr class="expand-row ${expandedRow===i?'open':''}" id="expand-${i}">
+          <td colspan="7">
+            <div class="expand-content">
+              <div>
+                <div class="expand-field"><div class="expand-label">Pain Point</div><div class="expand-value">${c.painPoint}</div></div>
+                <div class="expand-field"><div class="expand-label">Why Compelling</div><div class="expand-value">${c.whyCompelling}</div></div>
+              </div>
+              <div>
+                <div class="expand-field"><div class="expand-label">Competitive Risk</div><div class="expand-value">${c.competitiveRisk}</div></div>
+                <div class="expand-field"><div class="expand-label">Recommended Entry</div><div class="expand-value">${c.recommendedEntry}</div></div>
+                <div class="expand-field"><div class="expand-label">Full Product Config</div><div class="expand-value">${c.whatWeSell}</div></div>
+              </div>
+            </div>
+          </td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+    </div>
+    <div class="table-footer">
+      <span>Showing ${fc.length} of ${DATA.companies.length} companies</span>
+      <span>Sorted by ${sortCol} ${sortDir===1?'ascending':'descending'}</span>
+    </div>
+  </div>`;
+  return html;
+}
+
+function renderCompetitive(){
+  const categories=[...new Set(DATA.competitors.map(c=>c.category))];
+  const top10=DATA.competitors.sort((a,b)=>b.threatLevel-a.threatLevel).slice(0,10);
+  let html=`
+  <div class="insight-box">
+    <div class="insight-title">Juno's Defensible Differentiation</div>
+    <div class="insight-text">
+      <strong>1. Modular + White-label</strong> -- Most competitors are monolithic. Juno's embeddable model is rare.
+      <strong>2. Full-stack integration</strong> -- AI Coach + Scribe + Connect + Practice Management + 16K Provider Network.
+      <strong>3. Insurance-aligned model</strong> -- Not just PEPM contracts; insurance routing and coverage.
+      <strong>4. Clinically grounded AI</strong> -- AI Constitution/Guardrails framework. Most AI chatbots lack clinical governance.
+      <strong>5. Total Brain Assessments</strong> -- Unique cognitive/emotional resilience assessment.
+      <strong>6. International readiness</strong> -- Australia/international strategy ahead of most.
+      <strong>7. Provider network scale</strong> -- 16K+ providers, larger than most tech-first competitors.
+    </div>
+  </div>
+
+  <div class="section-header"><div class="section-title">Top 10 Threats</div><div class="section-subtitle">Ranked by threat level to Juno</div></div>
+  <div class="card" style="margin-bottom:32px">
+    ${top10.map((c,i)=>`
+    <div class="threat-list-item">
+      <div class="threat-rank">${i+1}</div>
+      <div class="threat-info">
+        <div class="threat-name">${c.name}</div>
+        <div class="threat-desc">${c.whatTheyDo}</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:4px">Funding: ${c.funding}</div>
+      </div>
+      <div style="text-align:right">
+        ${threatBars(c.threatLevel)}
+        <div style="font-size:11px;color:var(--text-muted);margin-top:4px">${c.threatLevel}/10</div>
+      </div>
+    </div>`).join('')}
+  </div>
+
+  <div class="section-header"><div class="section-title">Competitor Landscape by Category</div></div>
+  ${categories.map(cat=>{
+    const comps=DATA.competitors.filter(c=>c.category===cat);
+    return `
+    <div class="section-header" style="margin-top:24px"><div class="section-subtitle">${cat}</div></div>
+    <div class="grid-2" style="margin-bottom:16px">
+      ${comps.map(c=>`
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">${c.name}</div>
+          ${threatBars(c.threatLevel)}
+        </div>
+        <div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px">${c.whatTheyDo}</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px"><strong>Funding:</strong> ${c.funding}</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px"><strong>Juno Overlap:</strong> ${c.junoOverlap}</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
+          <div><div style="font-size:10px;color:var(--accent-green);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:2px">Strengths</div><div style="font-size:11px;color:var(--text-secondary)">${c.strengths}</div></div>
+          <div><div style="font-size:10px;color:var(--accent-rose);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:2px">Weaknesses</div><div style="font-size:11px;color:var(--text-secondary)">${c.weaknesses}</div></div>
+        </div>
+      </div>`).join('')}
+    </div>`;
+  }).join('')}`;
+  return html;
+}
+
+function renderProducts(){
+  const categories=[...new Set(DATA.products.map(p=>p.category))];
+  const catClass={"Consumer Tech":"cat-consumer","Provider Tech":"cat-provider","Network & Access":"cat-network","Data & Intelligence":"cat-data"};
+  const matrix=getProductSegmentMatrix();
+  const segs=getSegments();
+  
+  let productDetail='';
+  if(selectedProduct!==null){
+    const p=DATA.products[selectedProduct];
+    const pName=p.name.split(' (')[0].split(' and ')[0];
+    const matching=DATA.companies.filter(c=>c.whatWeSell.includes(pName));
+    const segCounts={};
+    matching.forEach(c=>{segCounts[c.segment]=(segCounts[c.segment]||0)+1});
+    productDetail=`
+    <div class="card" style="margin-bottom:24px;border-color:var(--accent-blue)">
+      <div class="card-header">
+        <div>
+          <span class="product-category-tag ${catClass[p.category]||''}">${p.category}</span>
+          <div class="card-title" style="font-size:18px;margin-top:4px">${p.name}</div>
+        </div>
+        <div style="cursor:pointer;color:var(--text-muted);font-size:20px" onclick="selectedProduct=null;renderView()">x</div>
+      </div>
+      <div style="font-size:14px;color:var(--text-secondary);margin-bottom:8px">${p.description}</div>
+      <div style="font-size:13px;margin-bottom:16px"><strong>Key Selling Point:</strong> ${p.keySellingPoint}</div>
+      <div class="section-subtitle" style="margin-bottom:8px">${matching.length} companies would buy this product</div>
+      <div class="grid-3">
+        ${Object.entries(segCounts).sort((a,b)=>b[1]-a[1]).map(([seg,count])=>`
+        <div style="display:flex;align-items:center;gap:8px;padding:8px;background:var(--bg-secondary);border-radius:var(--radius)">
+          <div style="width:4px;height:32px;border-radius:2px;background:${getSegmentColor(seg)}"></div>
+          <div>
+            <div style="font-size:13px;font-weight:500">${seg}</div>
+            <div style="font-size:11px;color:var(--text-muted)">${count} companies</div>
+          </div>
+        </div>`).join('')}
+      </div>
+      <div style="margin-top:16px">
+        <div class="section-subtitle" style="margin-bottom:8px">Companies</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          ${matching.map(c=>`<span class="badge badge-t${c.tier}" style="cursor:default">${c.company}</span>`).join('')}
+        </div>
+      </div>
+    </div>`;
+  }
+
+  let html=`
+  <div class="section-header"><div class="section-title">Juno Product Arsenal</div><div class="section-subtitle">15 components across 4 categories -- click to explore</div></div>
+  ${productDetail}
+  ${categories.map(cat=>{
+    const prods=DATA.products.filter(p=>p.category===cat);
+    return `
+    <div class="section-header" style="margin-top:16px"><div class="section-subtitle">${cat}</div></div>
+    <div class="product-grid" style="margin-bottom:16px">
+      ${prods.map((p,pi)=>{
+        const idx=DATA.products.indexOf(p);
+        return `<div class="product-card ${selectedProduct===idx?'selected':''}" onclick="selectedProduct=${idx};renderView()">
+          <span class="product-category-tag ${catClass[cat]||''}">${cat}</span>
+          <div class="card-title" style="margin-bottom:6px">${p.name}</div>
+          <div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px">${p.description}</div>
+          <div style="font-size:11px;color:var(--accent-blue)">${p.keySellingPoint}</div>
+        </div>`;
+      }).join('')}
+    </div>`;
+  }).join('')}
+
+  <div class="section-header" style="margin-top:32px"><div class="section-title">Product-to-Segment Matrix</div><div class="section-subtitle">Number of companies in each segment that need each product</div></div>
+  <div class="matrix-container">
+    <table class="matrix-table">
+      <thead><tr><th></th>${segs.map(s=>`<th style="writing-mode:vertical-rl;text-orientation:mixed;max-height:160px;font-size:10px">${s}</th>`).join('')}</tr></thead>
+      <tbody>
+        ${matrix.map(row=>`<tr>
+          <td class="row-label">${row.product}</td>
+          ${segs.map(s=>`<td class="${row[s]>0?'has-match':''}">${row[s]||''}</td>`).join('')}
+        </tr>`).join('')}
+      </tbody>
+    </table>
+  </div>`;
+  return html;
+}
+
+function renderPitches(){
+  let html=`
+  <div class="section-header"><div class="section-title">Pitch Frameworks by Segment</div><div class="section-subtitle">Segment-specific positioning, objections, and quick pitches for BD outreach</div></div>
+  <select class="filter-select" style="margin-bottom:16px" id="pitchFilter" onchange="renderView()">
+    <option value="">All Segments</option>
+    ${DATA.pitchFrameworks.map(p=>`<option value="${p.segment}">${p.segment}</option>`).join('')}
+  </select>
+  ${DATA.pitchFrameworks.filter(p=>{
+    const sel=document.getElementById('pitchFilter');
+    const val=sel?sel.value:'';
+    return !val||p.segment===val;
+  }).map(p=>{
+    const segCos=DATA.companies.filter(c=>c.segment===p.segment);
+    return `
+    <div class="pitch-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <div>
+          <div style="font-size:18px;font-weight:600;color:${getSegmentColor(p.segment)}">${p.segment}</div>
+          <div style="font-size:12px;color:var(--text-muted)">${segCos.length} companies | ${segCos.filter(c=>c.tier===1).length} Tier 1</div>
+        </div>
+      </div>
+      <div class="pitch-section">
+        <div class="pitch-label">Lead With</div>
+        <div class="pitch-text">${p.leadWith}</div>
+      </div>
+      <div class="pitch-section">
+        <div class="pitch-label">Positioning</div>
+        <div class="pitch-text">${p.positioning}</div>
+      </div>
+      <div class="pitch-section">
+        <div class="pitch-label">Key Objections</div>
+        <div class="pitch-text">${p.keyObjections}</div>
+      </div>
+      <div class="pitch-section">
+        <div class="pitch-label">Buyer Persona</div>
+        <div class="pitch-text">${p.buyerPersona}</div>
+      </div>
+      <div class="pitch-section">
+        <div class="pitch-label">Quick Pitch (Ready for Cold Outreach)</div>
+        <div class="pitch-quick">${p.quickPitch}</div>
+      </div>
+    </div>`;
+  }).join('')}`;
+  return html;
+}
+
+function renderPipeline(){
+  const active=DATA.pipeline.filter(p=>p.stage.includes('Pilot')||p.stage.includes('Qualification'));
+  const warm=DATA.pipeline.filter(p=>p.stage.includes('Warm')||p.stage.includes('Paused'));
+  const t1Prospect=DATA.companies.filter(c=>c.tier===1&&c.status==='Not contacted');
+  const t2Prospect=DATA.companies.filter(c=>c.tier===2&&c.status==='Not contacted').sort((a,b)=>b.dealPotential-a.dealPotential);
+
+  let html=`
+  <div class="section-header"><div class="section-title">Pipeline Overview</div></div>
+  <div class="kanban" style="margin-bottom:32px">
+    <div class="kanban-col">
+      <div class="kanban-title" style="color:var(--accent-green)">Active Deals <span class="kanban-count">${active.length}</span></div>
+      ${active.map(p=>`
+      <div class="kanban-item">
+        <div class="ki-company">${p.company}</div>
+        <div class="ki-segment">${p.config}</div>
+        <div style="font-size:11px;color:var(--text-secondary);margin-top:4px">${p.nextStep}</div>
+        <div class="ki-score">Target: ${p.targetDate}</div>
+      </div>`).join('')}
+    </div>
+    <div class="kanban-col">
+      <div class="kanban-title" style="color:var(--accent-amber)">Warm / Paused <span class="kanban-count">${warm.length}</span></div>
+      ${warm.map(p=>`
+      <div class="kanban-item">
+        <div class="ki-company">${p.company}</div>
+        <div class="ki-segment">${p.config}</div>
+        <div style="font-size:11px;color:var(--text-secondary);margin-top:4px">${p.nextStep}</div>
+      </div>`).join('')}
+    </div>
+    <div class="kanban-col">
+      <div class="kanban-title" style="color:var(--accent-blue)">Tier 1 Prospecting <span class="kanban-count">${t1Prospect.length}</span></div>
+      ${t1Prospect.slice(0,8).map(c=>`
+      <div class="kanban-item">
+        <div class="ki-company">${c.company}</div>
+        <div class="ki-segment">${c.segment}</div>
+        <div class="ki-score">Score: ${c.dealPotential}/10</div>
+      </div>`).join('')}
+      ${t1Prospect.length>8?`<div style="font-size:11px;color:var(--text-muted);text-align:center;padding:8px">+${t1Prospect.length-8} more</div>`:''}
+    </div>
+    <div class="kanban-col">
+      <div class="kanban-title" style="color:var(--accent-purple)">Tier 2 Queue <span class="kanban-count">${t2Prospect.length}</span></div>
+      ${t2Prospect.slice(0,8).map(c=>`
+      <div class="kanban-item">
+        <div class="ki-company">${c.company}</div>
+        <div class="ki-segment">${c.segment}</div>
+        <div class="ki-score">Score: ${c.dealPotential}/10</div>
+      </div>`).join('')}
+      ${t2Prospect.length>8?`<div style="font-size:11px;color:var(--text-muted);text-align:center;padding:8px">+${t2Prospect.length-8} more</div>`:''}
+    </div>
+  </div>
+
+  <div class="section-header"><div class="section-title">Active Deal Details</div></div>
+  ${DATA.pipeline.map(p=>`
+  <div class="pipeline-card">
+    <div class="pipeline-header">
+      <div class="card-title" style="font-size:16px">${p.company}</div>
+      ${statusBadge(p.stage)}
+    </div>
+    <div class="pipeline-config"><strong>Configuration:</strong> ${p.config}</div>
+    <div style="font-size:13px;color:var(--text-secondary);margin-bottom:8px"><strong>Next Step:</strong> ${p.nextStep}</div>
+    <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px">${p.notes}</div>
+    <div class="pipeline-meta">
+      <span>Owner: ${p.owner}</span>
+      <span>Target: ${p.targetDate}</span>
+    </div>
+  </div>`).join('')}
+
+  <div class="section-header" style="margin-top:32px"><div class="section-title">Tier 1 Prospecting Targets</div><div class="section-subtitle">Not yet contacted -- prioritized by deal potential</div></div>
+  <div class="table-container">
+    <table>
+      <thead><tr><th>Company</th><th>Segment</th><th>Lead Product</th><th>Score</th><th>Status</th><th>Entry Point</th></tr></thead>
+      <tbody>
+        ${t1Prospect.sort((a,b)=>b.dealPotential-a.dealPotential).map(c=>`
+        <tr>
+          <td style="font-weight:500">${c.company}</td>
+          <td><span style="color:${getSegmentColor(c.segment)}">${c.segment}</span></td>
+          <td style="font-size:12px">${c.whatWeSell}</td>
+          <td>${scoreDots(c.dealPotential)} <span style="font-size:11px;color:var(--text-muted)">${c.dealPotential}/10</span></td>
+          <td>${statusBadge(c.status)}</td>
+          <td style="font-size:12px;color:var(--text-secondary)">${c.recommendedEntry}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section-header" style="margin-top:32px"><div class="section-title">Deal Log</div></div>
+  <div class="table-container">
+    <table>
+      <thead><tr><th>Date</th><th>Company</th><th>Action</th><th>Outcome</th></tr></thead>
+      <tbody>
+        <tr><td>2026-01-20</td><td style="font-weight:500">Sober Sidekick</td><td>Partnership kickoff meeting</td><td>Aligned on crawl/walk/run, defined MVP</td></tr>
+        <tr><td>2026-02</td><td style="font-weight:500">LifeStance</td><td>Follow-up materials sent</td><td>AI Constitution deck, awaiting exec alignment</td></tr>
+        <tr><td>2026-02</td><td style="font-weight:500">Lockton</td><td>Initial pitch</td><td>$0.80 PEPM proposed, April meeting scheduled</td></tr>
+      </tbody>
+    </table>
+  </div>`;
+  return html;
+}
+
+// ---- Navigation ----
+function switchView(view){
+  currentView=view;
+  expandedRow=null;
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.toggle('active',t.dataset.view===view));
+  renderView();
+}
+function renderView(){
+  const el=document.getElementById('mainContent');
+  switch(currentView){
+    case 'dashboard':el.innerHTML=renderDashboard();break;
+    case 'market-map':el.innerHTML=renderMarketMap();break;
+    case 'competitive':el.innerHTML=renderCompetitive();break;
+    case 'products':el.innerHTML=renderProducts();break;
+    case 'pitches':el.innerHTML=renderPitches();break;
+    case 'pipeline':el.innerHTML=renderPipeline();break;
+  }
+}
+function toggleSort(col){
+  if(sortCol===col) sortDir*=-1;
+  else{sortCol=col;sortDir=-1}
+  renderView();
+}
+function toggleExpand(i){
+  expandedRow=expandedRow===i?null:i;
+  renderView();
+}
+function navigateToSegment(seg){
+  filters.segment=seg;
+  switchView('market-map');
+}
+
+// ---- Init ----
+document.querySelectorAll('.nav-tab').forEach(t=>t.addEventListener('click',()=>switchView(t.dataset.view)));
+renderView();
+</script>
+</body>
+</html>
