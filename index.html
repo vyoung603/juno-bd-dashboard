@@ -187,7 +187,8 @@ body{background:#fff;color:#000}
 <div class="header-meta">Project Juno | SonderMind | Updated 2026-03-03</div>
 </header>
 <nav class="nav-tabs" id="navTabs">
-<div class="nav-tab active" data-view="dashboard">Dashboard</div>
+<div class="nav-tab active" data-view="summary">Summary</div>
+<div class="nav-tab" data-view="dashboard">Dashboard</div>
 <div class="nav-tab" data-view="market-map">Market Map Explorer</div>
 <div class="nav-tab" data-view="competitive">Competitive Landscape</div>
 <div class="nav-tab" data-view="products">Product Arsenal</div>
@@ -226,7 +227,7 @@ function threatBars(n,max=10){
 }
 
 // ---- State ----
-let currentView = 'dashboard';
+let currentView = 'summary';
 let sortCol = 'dealPotential';
 let sortDir = -1;
 let filters = {search:'',segment:'',tier:'',minScore:0,product:''};
@@ -266,6 +267,93 @@ function getProductSegmentMatrix(){
 }
 
 // ---- Render Functions ----
+function renderSummary(){
+  const verticals=[
+    {name:'Brokers',lead:'Full platform (Analytics + Total Brain + AI Coach + Network)',motion:'Channel deal -- one partnership = hundreds of employers',why:'35% of employers adding BH; brokers need curated recommendation',insight:'Highest leverage. Prioritize Mercer, Aon, WTW.'},
+    {name:'Data/AI Partners',lead:'Guardrails/Evals + Proprietary Data',motion:'Strategic partnership -- licensing, co-development, data deals',why:'OpenAI + Anthropic launched health products Jan 2026',insight:'Non-standard deals. Our data moat is the asset.'},
+    {name:'Payors',lead:'AI Connect + Therapy Network + Analytics',motion:'Enterprise sale; regulatory urgency drives timeline',why:'CMS 10-day access; HEDIS BH measures tied to contracts',insight:'16K providers = immediate network adequacy relief.'},
+    {name:'DTC Telehealth',lead:'AI Scribe (wedge) + AI Coach (retention)',motion:'Product sale; ROI on clinician time or subscriber churn',why:'MH is stated growth priority for Hims, Talkiatry, Ro',insight:'AI Scribe is #1 request. Land with Scribe, expand.'},
+    {name:'University / Gov',lead:'AI Coach + Total Brain + AI Connect',motion:'Government/state procurement; funded by mandates',why:'State funding mandates require outcomes reporting',insight:'Long cycle (12-18mo). Start now for 2027.'},
+    {name:'Employers',lead:'AI Coach + Total Brain + Analytics',motion:'Direct or via broker channel (broker more efficient)',why:'10% projected cost increases; BH fastest-growing',insight:'Broker channel > direct. JPM Morgan Health as flagship.'},
+    {name:'Women\'s Health',lead:'AI Coach + Analytics',motion:'Product partnership with VP Clinical or CMO',why:'60-70% BH comorbidity; perinatal screening mandates',insight:'Maven + Progyny have employer distribution we ride.'},
+    {name:'Provider Groups',lead:'AI Scribe + Workflow Tools + Guardrails',motion:'Enterprise sale; AI Scribe is the wedge',why:'LifeStance, Acadia, UHS investing in AI',insight:'Compete with Hippocratic on BH specialization.'},
+    {name:'Care Navigation',lead:'AI Coach + AI Connect + Therapy Network',motion:'Product integration; sell the closed loop post-referral',why:'Quantum Health pre-IPO; nav stops at referral',insight:'We are the BH clinical layer on top of nav.'},
+    {name:'Wellness / Wearables',lead:'Total Brain + Proprietary Data + Self-Care',motion:'Data/product partnership; detect and intervene',why:'Oura $11B health vision; Headspace pre-IPO',insight:'Oura and Headspace are the real targets.'},
+    {name:'Chronic / MSK / Addiction',lead:'AI Coach + Total Brain + Self-Care',motion:'Product partnership; BH comorbidity improves outcomes',why:'Sword Mind validates MH in MSK; 75% SUD-BH comorbidity',insight:'Outcomes-based pricing = financial alignment.'},
+    {name:'Practices (SaaS)',lead:'Practice Mgmt + AI Scribe + Analytics',motion:'SaaS product sale; high volume, lower ACV ($1-50K/yr)',why:'No BH-specific EHR has AI',insight:'Product play, not BD play. Build first.'},
+  ];
+  const products=[
+    {name:'AI Coach',cat:'Consumer',desc:'Conversational AI for between-session support',wedge:'Digital health apps, employers, health plans, universities'},
+    {name:'Self-Care Tools',cat:'Consumer',desc:'CBT, mindfulness, journaling, psychoeducation',wedge:'Bundles with AI Coach'},
+    {name:'Total Brain Assessments',cat:'Consumer',desc:'Validated cognitive/emotional assessments',wedge:'Employers, brokers, wearables -- unique asset'},
+    {name:'AI Connect',cat:'Consumer',desc:'Agentic intake, triage, provider matching',wedge:'Health plans, care nav -- solves access directly'},
+    {name:'AI Scribe',cat:'Provider',desc:'Clinical documentation automation for BH',wedge:'#1 requested feature across provider-facing cos'},
+    {name:'Clinical Workflow Tools',cat:'Provider',desc:'Treatment planning, supervision, quality checks',wedge:'Expand after AI Scribe lands'},
+    {name:'Practice Management',cat:'Provider',desc:'Scheduling, billing, claims, credentialing',wedge:'Small-mid practices SaaS play'},
+    {name:'RCM / Credentialing',cat:'Provider',desc:'Revenue cycle management, insurance credentialing',wedge:'Mid-size practices, provider groups'},
+    {name:'Therapy Network (16K)',cat:'Network',desc:'SonderMind\'s 16K provider overflow/referral network',wedge:'Health plans, employers, care nav'},
+    {name:'Care Coordination',cat:'Network',desc:'Closed-loop referrals, step-down/step-up',wedge:'Inpatient BH, health plans'},
+    {name:'Clinical Data/Analytics',cat:'Data',desc:'Outcomes dashboards, population health, ROI',wedge:'Brokers, payors -- outcomes IS the sale'},
+    {name:'Guardrails/Evals',cat:'Data',desc:'Clinical AI safety framework for BH',wedge:'AI companies -- no one else has this for BH'},
+    {name:'Proprietary Data Assets',cat:'Data',desc:'Longitudinal therapy outcomes for training',wedge:'AI companies, research -- licensing play'},
+    {name:'Total Brain IP',cat:'Data',desc:'Cognitive training, emotional resilience, neuroscience',wedge:'Wearables, employers, universities, military'},
+  ];
+  const catColors={Consumer:'var(--accent-blue)',Provider:'var(--accent-purple)',Network:'var(--accent-teal)',Data:'var(--accent-amber)'};
+  const t1=companies.filter(c=>c.tier===1).length;
+  const t2=companies.filter(c=>c.tier===2).length;
+  const t3=companies.filter(c=>c.tier===3).length;
+  let html=`<div class="section-title" style="margin-bottom:8px">Juno BD Intelligence Hub</div>
+  <p style="color:var(--text-secondary);margin-bottom:24px;max-width:800px">
+  This dashboard is the interactive companion to Juno's BD motion. It maps ${companies.length} target companies across 14 segments, profiles key competitors, and provides segment-specific pitch frameworks. Use it to find targets, plan outreach, and understand the competitive landscape.
+  </p>
+  <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:32px">
+  <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:12px 20px"><span style="font-size:24px;font-weight:700">${companies.length}</span><span style="color:var(--text-muted);font-size:12px;margin-left:8px">Companies Mapped</span></div>
+  <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:12px 20px"><span style="font-size:24px;font-weight:700">14</span><span style="color:var(--text-muted);font-size:12px;margin-left:8px">Segments</span></div>
+  <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:12px 20px"><span style="font-size:24px;font-weight:700;color:var(--accent-green)">${t1}</span><span style="color:var(--text-muted);font-size:12px;margin-left:8px">Tier 1</span></div>
+  <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:12px 20px"><span style="font-size:24px;font-weight:700;color:var(--accent-blue)">${t2}</span><span style="color:var(--text-muted);font-size:12px;margin-left:8px">Tier 2</span></div>
+  <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:12px 20px"><span style="font-size:24px;font-weight:700;color:var(--text-muted)">${t3}</span><span style="color:var(--text-muted);font-size:12px;margin-left:8px">Tier 3</span></div>
+  <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:12px 20px"><span style="font-size:24px;font-weight:700;color:var(--accent-rose)">${competitors.length}</span><span style="color:var(--text-muted);font-size:12px;margin-left:8px">Competitors Tracked</span></div>
+  </div>`;
+
+  // How to use
+  html+=`<div class="section-title" style="margin-bottom:12px">How to Use This Dashboard</div>
+  <div class="grid-3" style="margin-bottom:32px">
+  <div class="card"><div style="font-weight:500;margin-bottom:8px;color:var(--accent-blue)">Market Map Explorer</div><p style="font-size:13px;color:var(--text-secondary)">Filter ${companies.length} companies by segment, tier, deal potential, or product. Click any row to see the full pitch, buyer, competitive risk, and recommended entry point.</p></div>
+  <div class="card"><div style="font-weight:500;margin-bottom:8px;color:var(--accent-purple)">Competitive Landscape</div><p style="font-size:13px;color:var(--text-secondary)">Understand who we are up against. Top threats ranked, competitor profiles by category, and what we can learn from each player's positioning.</p></div>
+  <div class="card"><div style="font-weight:500;margin-bottom:8px;color:var(--accent-teal)">Product Arsenal</div><p style="font-size:13px;color:var(--text-secondary)">15 modular components across 4 categories. Click any product to see which companies buy it and which segments it is strongest in.</p></div>
+  <div class="card"><div style="font-weight:500;margin-bottom:8px;color:var(--accent-amber)">Pitch Frameworks</div><p style="font-size:13px;color:var(--text-secondary)">Segment-by-segment positioning: what to lead with, buyer persona, key objections, and a ready-to-use quick pitch for cold outreach.</p></div>
+  <div class="card"><div style="font-weight:500;margin-bottom:8px;color:var(--accent-green)">Pipeline</div><p style="font-size:13px;color:var(--text-secondary)">Active deals, warm leads, and Tier 1 prospecting targets. Track progress and identify what needs attention.</p></div>
+  <div class="card"><div style="font-weight:500;margin-bottom:8px;color:var(--accent-rose)">Dashboard</div><p style="font-size:13px;color:var(--text-secondary)">At-a-glance view: top targets, segment heatmap, pipeline summary. Start here for a quick pulse check.</p></div>
+  </div>`;
+
+  // Product Arsenal
+  html+=`<div class="section-title" style="margin-bottom:12px">Product Arsenal -- 15 Components</div>
+  <div style="overflow-x:auto;margin-bottom:32px"><table class="data-table"><thead><tr><th>Product</th><th>Category</th><th>What It Does</th><th>Best Wedge For</th></tr></thead><tbody>`;
+  products.forEach(p=>{
+    html+=`<tr><td style="font-weight:500">${p.name}</td><td><span style="color:${catColors[p.cat]||'var(--text-secondary)'};font-size:12px;font-weight:500">${p.cat}</span></td><td style="font-size:13px;color:var(--text-secondary)">${p.desc}</td><td style="font-size:13px;color:var(--text-secondary)">${p.wedge}</td></tr>`;
+  });
+  html+=`</tbody></table></div>`;
+
+  // Vertical approach
+  html+=`<div class="section-title" style="margin-bottom:12px">How We Approach Each Vertical</div>
+  <div style="overflow-x:auto;margin-bottom:32px"><table class="data-table"><thead><tr><th>Vertical</th><th>Lead Product</th><th>Sales Motion</th><th>Why Now</th><th>Key Insight</th></tr></thead><tbody>`;
+  verticals.forEach(v=>{
+    html+=`<tr><td style="font-weight:500;white-space:nowrap">${v.name}</td><td style="font-size:13px;color:var(--accent-blue)">${v.lead}</td><td style="font-size:13px;color:var(--text-secondary)">${v.motion}</td><td style="font-size:13px;color:var(--text-secondary)">${v.why}</td><td style="font-size:13px;color:var(--accent-amber)">${v.insight}</td></tr>`;
+  });
+  html+=`</tbody></table></div>`;
+
+  // Evolution log
+  html+=`<div class="section-title" style="margin-bottom:12px">Evolution Log</div>
+  <p style="font-size:13px;color:var(--text-muted);margin-bottom:12px">Strategic shifts over time, so any contributor can see how our thinking has changed.</p>
+  <div style="overflow-x:auto;margin-bottom:32px"><table class="data-table"><thead><tr><th>Date</th><th>Change</th><th>Rationale</th></tr></thead><tbody>
+  <tr><td style="white-space:nowrap">2026-03-03</td><td>Initial build: ${companies.length} companies, 14 segments, ${t1} Tier 1 targets</td><td style="color:var(--text-secondary)">First comprehensive market map and competitive landscape</td></tr>
+  <tr><td style="white-space:nowrap">2026-03-03</td><td>Broker channel identified as #1 priority</td><td style="color:var(--text-secondary)">One broker partnership = 100x reach of one direct employer deal</td></tr>
+  <tr><td style="white-space:nowrap">2026-03-03</td><td>Data/AI partnerships as strategic bets (OpenAI, Anthropic, Apple)</td><td style="color:var(--text-secondary)">SonderMind's clinical BH data + guardrails are non-replicable assets</td></tr>
+  <tr><td style="white-space:nowrap">2026-03-03</td><td>JAAQ reclassified from inbound to competitor (monitor)</td><td style="color:var(--text-secondary)">Not an inbound; need to determine sell strategy first</td></tr>
+  </tbody></table></div>`;
+
+  return html;
+}
 function renderDashboard(){
   const total=DATA.companies.length;
   const t1=getByTier(1).length,t2=getByTier(2).length,t3=getByTier(3).length;
@@ -700,6 +788,7 @@ function switchView(view){
 function renderView(){
   const el=document.getElementById('mainContent');
   switch(currentView){
+    case 'summary':el.innerHTML=renderSummary();break;
     case 'dashboard':el.innerHTML=renderDashboard();break;
     case 'market-map':el.innerHTML=renderMarketMap();break;
     case 'competitive':el.innerHTML=renderCompetitive();break;
@@ -726,5 +815,15 @@ function navigateToSegment(seg){
 document.querySelectorAll('.nav-tab').forEach(t=>t.addEventListener('click',()=>switchView(t.dataset.view)));
 renderView();
 </script>
+<footer style="background:var(--bg-secondary);border-top:1px solid var(--border);padding:16px 32px;margin-top:40px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+<div style="font-size:12px;color:var(--text-muted)">Project Juno BD Intelligence Hub -- Last updated 2026-03-03</div>
+<div style="display:flex;gap:16px;align-items:center">
+<a href="https://docs.google.com/spreadsheets/d/1DN4vHMhKcDIbtMmLF4_17VwZe95KJ_xytFecP9Opv4Y/edit" target="_blank" style="font-size:12px;color:var(--accent-blue);text-decoration:none">Google Sheet (live database)</a>
+<span style="color:var(--border)">|</span>
+<a href="https://github.com/vyoung603/juno-bd-dashboard" target="_blank" style="font-size:12px;color:var(--accent-blue);text-decoration:none">GitHub repo</a>
+<span style="color:var(--border)">|</span>
+<span style="font-size:12px;color:var(--text-muted)">Data sourced from Juno BD Market Map + Pipeline Sheet</span>
+</div>
+</footer>
 </body>
 </html>
