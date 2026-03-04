@@ -299,6 +299,8 @@ function renderSummary(){
     {name:'Total Brain IP',cat:'Data',desc:'Cognitive training, emotional resilience, neuroscience',wedge:'Wearables, employers, universities, military'},
   ];
   const catColors={Consumer:'var(--accent-blue)',Provider:'var(--accent-purple)',Network:'var(--accent-teal)',Data:'var(--accent-amber)'};
+  const companies=DATA.companies;
+  const competitors=DATA.competitors;
   const t1=companies.filter(c=>c.tier===1).length;
   const t2=companies.filter(c=>c.tier===2).length;
   const t3=companies.filter(c=>c.tier===3).length;
